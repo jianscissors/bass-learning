@@ -32,6 +32,7 @@
   .lcd-icon { font-size: 40px; line-height: 1; filter: drop-shadow(0 0 12px var(--accent-glow)); }
   .lcd-note.good { color: var(--good); text-shadow: 0 0 18px var(--good-glow); }
   .lcd-note.bad { color: var(--bad); text-shadow: 0 0 18px var(--bad-glow); }
+  .lcd-notes-tag { font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); letter-spacing: 0.02em; }
 </style>
 </head>
 <body>
@@ -70,6 +71,7 @@
         <span class="lcd-icon" id="lcd-icon">🎧</span>
         <span class="lcd-note" id="lcd-note" style="display:none;"></span>
       </div>
+      <div class="lcd-notes-tag" id="lcd-notes-tag" style="display:none;"></div>
       <div class="lcd-feedback" id="lcd-feedback"></div>
     </div>
 
@@ -156,7 +158,7 @@
   let audioCtx = null;
 
   const el = {};
-  ['modeSwitch','rangeLabel','rangeSlider','lcdLabel','lcdNote','lcdIcon','lcdFeedback',
+  ['modeSwitch','rangeLabel','rangeSlider','lcdLabel','lcdNote','lcdIcon','lcdNotesTag','lcdFeedback',
    'btnPlay','btnReplay','intervalGrid','statStreak','statBest','statAccuracy','statTotal',
    'btnSkip','btnReset','intervalToggles','btnClearHistory','historyToday','historyTotal',
    'historyBestStreak','historyAccuracy','historyList']
@@ -353,6 +355,7 @@
     el.lcdLabel.textContent = audioCtx ? '点击播放，听完再猜' : '点击「播放」开始';
     el.lcdIcon.style.display = 'inline';
     el.lcdNote.style.display = 'none';
+    el.lcdNotesTag.style.display = 'none';
     setFeedback('', '');
     el.intervalGrid.querySelectorAll('.interval-btn').forEach(b => {
       b.classList.remove('correct', 'wrong', 'reveal');
@@ -385,6 +388,10 @@
     el.lcdNote.textContent = INTERVALS[correctIndex].name;
     el.lcdNote.className = 'lcd-note ' + (isCorrect ? 'good' : 'bad');
     el.lcdLabel.textContent = '正确答案';
+    const [firstMidi, secondMidi] = state.challenge.notes;
+    const sep = state.playMode === 'harmonic' ? ' + ' : ' → ';
+    el.lcdNotesTag.textContent = midiToName(firstMidi) + sep + midiToName(secondMidi);
+    el.lcdNotesTag.style.display = 'block';
 
     state.total++;
     if (isCorrect) {
