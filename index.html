@@ -265,6 +265,18 @@
   .lcd-feedback.good { color: var(--good); }
   .lcd-feedback.bad { color: var(--bad); }
 
+  .lcd-string-tag {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent-strong);
+    background: rgba(215, 154, 61, 0.12);
+    border: 1px solid var(--accent);
+    border-radius: 20px;
+    padding: 3px 12px;
+    letter-spacing: 0.02em;
+  }
+
   /* ---- stats row ---- */
   .stats {
     display: grid;
@@ -314,7 +326,11 @@
     z-index: 0;
   }
 
-  .string-label { font-family: var(--font-display); font-size: 12px; font-weight: 700; color: var(--text-muted); text-align: center; z-index: 1; }
+  .string-label { font-family: var(--font-display); font-size: 12px; font-weight: 700; color: var(--text-muted); text-align: center; z-index: 1; transition: color 0.15s; }
+
+  .string-row.not-target { opacity: 0.35; }
+  .string-row.target-string .string-label { color: var(--accent-strong); }
+  .string-row.target-string::before { opacity: 1; box-shadow: 0 0 8px var(--accent-glow); }
 
   .fret-cell {
     position: relative;
@@ -380,6 +396,7 @@
   .settings-row { display: flex; flex-direction: column; gap: 8px; }
   .settings-row-inline { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .settings-label { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); }
+  .settings-hint { font-size: 12px; line-height: 1.5; color: var(--text-dim); margin: 0; }
 
   .pill-group { display: flex; flex-wrap: wrap; gap: 6px; }
   .pill {
@@ -439,6 +456,7 @@
 
     <div class="lcd">
       <div class="lcd-label" id="lcd-label">找到这个音</div>
+      <div class="lcd-string-tag" id="lcd-string-tag" style="display:none;"></div>
       <div class="lcd-challenge" id="lcd-challenge"><span class="lcd-note" id="lcd-note">–</span></div>
       <div class="lcd-feedback" id="lcd-feedback"></div>
     </div>
@@ -467,6 +485,12 @@
     </div>
 
     <div class="settings-row">
+      <div class="settings-label">指定弦模式</div>
+      <div class="pill-group"><span class="pill" id="require-string-toggle">关闭</span></div>
+      <p class="settings-hint">开启后每题会指定一根弦，在启用的弦之间轮流出题，逼自己把同一个音在每根弦上都摸熟。点击作答会按弦位判对错；麦克风作答只能听出音准，弦是靠你自己盯住提示、老实弹在指定的弦上。</p>
+    </div>
+
+    <div class="settings-row">
       <div class="settings-label">品格范围（0 – <span id="fret-range-label">12</span>）</div>
       <div class="range-row">
         <input type="range" id="fret-range" min="4" max="15" value="12" step="1">
@@ -485,7 +509,7 @@
     </div>
   </div>
 
-  <footer>提示：同一个音在指板上通常不止一个位置，麦克风只判断音名对不对，弹哪一个把位都算对。安静的房间、离麦克风近一点，识别会更准。</footer>
+  <footer>提示：默认弹哪一个把位都算对；开启「指定弦模式」后题目会亮出一根弦，练的是那根弦上的位置。安静的房间、离麦克风近一点，识别会更准。</footer>
 </div>
 
 <script>
@@ -520,6 +544,8 @@
     stringsEnabled: [true, true, true, true],
     naturalOnly: false,
     intervalsEnabled: INTERVALS.map(() => true),
+    requireString: false,
+    stringBag: [],
     challenge: null,
     startTime: 0,
     missedThisRound: false,
@@ -541,7 +567,8 @@
   ['fretboard','lcdLabel','lcdChallenge','lcdFeedback','statStreak','statBest','statAccuracy','statAvg',
    'modeNote','modeInterval','inputMic','inputClick','stringToggles','fretRange','fretRangeLabel','fretRangeValue',
    'naturalToggle','intervalSettings','intervalToggles','btnReveal','btnSkip','btnReset','micControl','micToggle',
-   'micToggleLabel','micStatus','levelFill','livePitch','liveNote','centsMarker','fretboardHeading']
+   'micToggleLabel','micStatus','levelFill','livePitch','liveNote','centsMarker','fretboardHeading',
+   'requireStringToggle','lcdStringTag']
    .forEach(key => { el[key] = document.getElementById(key.replace(/([A-Z])/g, m => '-' + m.toLowerCase())); });
 
   // ---------- fretboard ----------
@@ -556,6 +583,7 @@
         if (state.stringsEnabled[i] && enabledCount === 1) return;
         state.stringsEnabled[i] = !state.stringsEnabled[i];
         pill.classList.toggle('on', state.stringsEnabled[i]);
+        refillStringBag();
         renderFretboard();
         generateChallenge();
       });
@@ -591,7 +619,7 @@
 
     STRINGS.forEach((s, si) => {
       const enabled = state.stringsEnabled[si];
-      html += `<div class="fret-row string-row" style="grid-template-columns:${cols};--string-thickness:${s.thickness}px;${enabled ? '' : 'opacity:0.3;'}">`;
+      html += `<div class="fret-row string-row" data-string="${si}" style="grid-template-columns:${cols};--string-thickness:${s.thickness}px;${enabled ? '' : 'opacity:0.3;'}">`;
       html += `<span class="string-label">${s.name}</span>`;
       for (let f = 0; f <= maxFret; f++) {
         const noteIdx = (s.open + f) % 12;
@@ -615,10 +643,11 @@
     }
   }
 
-  function reachablePositions(noteFilter) {
+  function reachablePositions(noteFilter, stringFilter) {
     const positions = [];
     STRINGS.forEach((s, si) => {
       if (!state.stringsEnabled[si]) return;
+      if (stringFilter !== undefined && si !== stringFilter) return;
       for (let f = 0; f <= state.maxFret; f++) {
         const noteIdx = (s.open + f) % 12;
         if (noteFilter === undefined || noteIdx === noteFilter) positions.push({ string: si, fret: f, note: noteIdx });
@@ -628,6 +657,32 @@
   }
 
   function pickNotePool() { return state.naturalOnly ? NATURAL_INDICES : [...Array(12).keys()]; }
+
+  // ---------- string rotation ----------
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function refillStringBag() {
+    state.stringBag = shuffle(STRINGS.map((_, i) => i).filter(i => state.stringsEnabled[i]));
+  }
+
+  function nextTargetString() {
+    if (state.stringBag.length === 0) refillStringBag();
+    return state.stringBag.pop();
+  }
+
+  function highlightTargetStringRow(targetString) {
+    el.fretboard.querySelectorAll('.string-row').forEach(row => {
+      const si = Number(row.dataset.string);
+      row.classList.toggle('target-string', targetString !== undefined && si === targetString);
+      row.classList.toggle('not-target', targetString !== undefined && si !== targetString);
+    });
+  }
 
   // ---------- challenge generation ----------
   function generateChallenge() {
@@ -639,21 +694,31 @@
     }
 
     const pool = pickNotePool();
+    const targetString = state.requireString ? nextTargetString() : undefined;
     let attempts = 0, challenge = null;
 
     while (attempts < 200) {
       attempts++;
       if (state.mode === 'note') {
         const note = pool[Math.floor(Math.random() * pool.length)];
-        if (reachablePositions(note).length > 0) { challenge = { type: 'note', note }; break; }
+        if (reachablePositions(note, targetString).length > 0) { challenge = { type: 'note', note, string: targetString }; break; }
       } else {
         const enabledIntervals = INTERVALS.filter((_, i) => state.intervalsEnabled[i]);
         if (enabledIntervals.length === 0) break;
         const root = pool[Math.floor(Math.random() * pool.length)];
         const iv = enabledIntervals[Math.floor(Math.random() * enabledIntervals.length)];
         const note = (root + iv.semitones) % 12;
-        if (reachablePositions(note).length > 0) { challenge = { type: 'interval', root, interval: iv, note }; break; }
+        if (reachablePositions(note, targetString).length > 0) { challenge = { type: 'interval', root, interval: iv, note, string: targetString }; break; }
       }
+    }
+
+    if (!challenge) {
+      el.lcdLabel.textContent = '当前设置下找不到可行的音，试试增加品格范围';
+      el.lcdStringTag.style.display = 'none';
+      el.lcdChallenge.innerHTML = '<span class="lcd-note">–</span>';
+      state.challenge = null;
+      highlightTargetStringRow(undefined);
+      return;
     }
 
     state.challenge = challenge;
@@ -679,6 +744,14 @@
         `<span class="lcd-op">的</span>` +
         `<span class="lcd-interval">${state.challenge.interval.name}</span>`;
     }
+
+    if (state.challenge.string !== undefined) {
+      el.lcdStringTag.textContent = `在 ${STRINGS[state.challenge.string].name} 弦`;
+      el.lcdStringTag.style.display = 'inline-block';
+    } else {
+      el.lcdStringTag.style.display = 'none';
+    }
+    highlightTargetStringRow(state.challenge.string);
   }
 
   function clearCellStates() {
@@ -693,7 +766,7 @@
 
   function markCorrect(revealMatches) {
     if (revealMatches) {
-      reachablePositions(state.challenge.note).forEach(pos => {
+      reachablePositions(state.challenge.note, state.challenge.string).forEach(pos => {
         const cell = el.fretboard.querySelector(`.fret-cell[data-string="${pos.string}"][data-fret="${pos.fret}"]`);
         if (cell) cell.classList.add('correct');
       });
@@ -741,7 +814,9 @@
     if (!state.challenge || state.inputMode !== 'click' || state.confirmedThisRound) return;
     const cell = e.currentTarget;
     const note = Number(cell.dataset.note);
-    if (note === state.challenge.note) {
+    const cellString = Number(cell.dataset.string);
+    const stringOk = state.challenge.string === undefined || cellString === state.challenge.string;
+    if (note === state.challenge.note && stringOk) {
       cell.classList.add('correct');
       markCorrect(false);
     } else {
@@ -927,10 +1002,18 @@
     generateChallenge();
   });
 
+  el.requireStringToggle.addEventListener('click', () => {
+    state.requireString = !state.requireString;
+    el.requireStringToggle.classList.toggle('on', state.requireString);
+    el.requireStringToggle.textContent = state.requireString ? '开启' : '关闭';
+    refillStringBag();
+    generateChallenge();
+  });
+
   el.btnReveal.addEventListener('click', () => {
     if (!state.challenge) return;
     state.revealedThisRound = true;
-    reachablePositions(state.challenge.note).forEach(pos => {
+    reachablePositions(state.challenge.note, state.challenge.string).forEach(pos => {
       const cell = el.fretboard.querySelector(`.fret-cell[data-string="${pos.string}"][data-fret="${pos.fret}"]`);
       if (cell) cell.classList.add('reveal-ring');
     });
@@ -943,6 +1026,7 @@
   // ---------- init ----------
   buildStringToggles();
   buildIntervalToggles();
+  refillStringBag();
   setInputMode('mic');
   renderFretboard();
   updateStats();
