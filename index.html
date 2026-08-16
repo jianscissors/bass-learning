@@ -7,187 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
 <style>
-  :root {
-    --bg: #15110d;
-    --panel: #1e1712;
-    --panel-2: #241b13;
-    --panel-inset: #100d09;
-    --line: #382c20;
-    --text: #f1e7d8;
-    --text-muted: #a4937c;
-    --text-dim: #6f6151;
-    --accent: #d79a3d;
-    --accent-strong: #e8b25c;
-    --accent-glow: rgba(215, 154, 61, 0.35);
-    --good: #8bb15c;
-    --good-glow: rgba(139, 177, 92, 0.5);
-    --bad: #c85a44;
-    --bad-glow: rgba(200, 90, 68, 0.5);
-    --wood-1: #2b2015;
-    --wood-2: #221910;
-    --fret-metal: #a89e8a;
-    --nut: #ddd0b4;
-    --rec: #d9584a;
-    --bevel-hi: rgba(255, 255, 255, 0.05);
-    --bevel-lo: rgba(0, 0, 0, 0.35);
-
-    --font-display: ui-sans-serif, "SF Compact", "Segoe UI Semibold", system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-    --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-    --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
-  }
-
-  * { box-sizing: border-box; }
-
-  body {
-    background-color: var(--bg);
-    background-image:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-      radial-gradient(ellipse 900px 460px at 50% -8%, rgba(232, 178, 92, 0.10), transparent 65%);
-    background-repeat: repeat, no-repeat;
-    color: var(--text);
-    font-family: var(--font-body);
-    margin: 0;
-    padding: 32px 16px 48px;
-    display: flex;
-    justify-content: center;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  .app {
-    width: 100%;
-    max-width: 760px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  header { display: flex; flex-direction: column; gap: 6px; }
-
-  h1 {
-    font-family: var(--font-display);
-    font-size: clamp(24px, 4vw, 30px);
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    margin: 0;
-    text-wrap: balance;
-  }
-
-  .subtitle { color: var(--text-muted); font-size: 14px; line-height: 1.5; max-width: 60ch; }
-
-  .eyebrow {
-    font-family: var(--font-display);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--accent);
-    text-shadow: 0 0 12px var(--accent-glow);
-  }
-
-  :focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-strong); }
-
-  .panel {
-    background: linear-gradient(165deg, var(--panel), var(--panel-2));
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    box-shadow:
-      0 1px 0 var(--bevel-hi) inset,
-      0 -1px 0 var(--bevel-lo) inset,
-      0 20px 44px rgba(0, 0, 0, 0.48),
-      0 2px 6px rgba(0, 0, 0, 0.3);
-    padding: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .row-switches { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; }
-
-  .mode-switch {
-    display: inline-flex;
-    flex-wrap: wrap;
-    background: var(--panel-inset);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 3px;
-    gap: 3px;
-  }
-
-  .mode-switch button {
-    font-family: var(--font-display);
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    background: transparent;
-    border: none;
-    color: var(--text-dim);
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-  }
-
-  .mode-switch button.active { background: var(--accent); color: #1a1309; box-shadow: 0 1px 0 var(--bevel-hi) inset, 0 -2px 4px rgba(0, 0, 0, 0.15) inset; }
-  .mode-switch button:not(.active):hover { color: var(--text); }
-  .mode-switch button:active { transform: translateY(1px); }
-
-  /* ---- mic control ---- */
-  .mic-control { display: flex; flex-direction: column; gap: 10px; }
-
-  .mic-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    font-family: var(--font-display);
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    background: var(--panel-2);
-    color: var(--text);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 12px 16px;
-    cursor: pointer;
-    transition: border-color 0.15s, color 0.15s;
-  }
-
-  .mic-toggle:hover { border-color: var(--accent); }
-  .mic-toggle:active { transform: translateY(1px); }
-  .mic-toggle.listening { border-color: var(--rec); color: var(--text); box-shadow: 0 0 0 1px rgba(217, 88, 74, 0.4), 0 0 18px rgba(217, 88, 74, 0.22); }
-
-  .rec-dot {
-    width: 9px; height: 9px; border-radius: 50%;
-    background: var(--text-dim);
-  }
-  .mic-toggle.listening .rec-dot {
-    background: var(--rec);
-    animation: pulse 1.4s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--bad-glow); }
-    50% { opacity: 0.5; }
-  }
-
-  .mic-status { font-size: 12px; color: var(--text-dim); text-align: center; min-height: 16px; }
-  .mic-status.error { color: var(--bad); }
-
-  .level-meter {
-    height: 4px;
-    border-radius: 2px;
-    background: var(--panel-inset);
-    border: 1px solid var(--line);
-    overflow: hidden;
-  }
-  .level-meter-fill {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, var(--good), var(--accent));
-    transition: width 0.08s linear;
-  }
-
   .live-pitch {
     display: flex;
     align-items: center;
@@ -228,75 +49,6 @@
   }
   .cents-marker.in-tune { background: var(--good); }
 
-  /* ---- LCD readout ---- */
-  .lcd {
-    position: relative;
-    background:
-      repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0px, rgba(255, 255, 255, 0.02) 1px, transparent 1px, transparent 3px),
-      var(--panel-inset);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 22px 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    text-align: center;
-    min-height: 130px;
-    justify-content: center;
-    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.6), inset 0 0 44px rgba(232, 178, 92, 0.06);
-    overflow: hidden;
-  }
-
-  .lcd-note, .lcd-interval { animation: lcd-flicker 0.4s ease-out; }
-  @keyframes lcd-flicker {
-    0% { opacity: 0; filter: brightness(1.8); }
-    40% { opacity: 1; }
-    55% { opacity: 0.55; }
-    100% { opacity: 1; filter: brightness(1); }
-  }
-
-  .lcd-label {
-    font-family: var(--font-display);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-  }
-
-  .lcd-challenge { display: flex; align-items: baseline; justify-content: center; gap: 12px; flex-wrap: wrap; }
-
-  .lcd-note {
-    font-family: var(--font-mono);
-    font-size: clamp(40px, 9vw, 56px);
-    font-weight: 600;
-    color: var(--accent-strong);
-    text-shadow: 0 0 18px var(--accent-glow);
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .lcd-op { font-family: var(--font-body); font-size: 16px; color: var(--text-dim); }
-
-  .lcd-interval {
-    font-family: var(--font-mono);
-    font-size: clamp(24px, 5vw, 32px);
-    font-weight: 600;
-    color: var(--text);
-  }
-
-  .lcd-feedback {
-    font-family: var(--font-display);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    height: 16px;
-    color: var(--text-dim);
-  }
-  .lcd-feedback.good { color: var(--good); }
-  .lcd-feedback.bad { color: var(--bad); }
-
   .lcd-string-tag {
     font-family: var(--font-mono);
     font-size: 13px;
@@ -308,39 +60,6 @@
     padding: 3px 12px;
     letter-spacing: 0.02em;
   }
-
-  /* ---- stats row ---- */
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1px;
-    background: var(--line);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    overflow: hidden;
-  }
-
-  .stat { background: var(--panel-2); box-shadow: inset 0 1px 0 var(--bevel-hi), inset 0 -8px 14px -10px rgba(0, 0, 0, 0.5); padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; align-items: center; }
-  .stat-value { font-family: var(--font-mono); font-size: 19px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
-  .stat-label { font-family: var(--font-display); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
-  /* ---- practice history ---- */
-  .history-list { display: flex; flex-direction: column; gap: 6px; }
-  .history-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    row-gap: 4px;
-    gap: 12px;
-    background: var(--panel-2);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 8px 12px;
-  }
-  .history-date { font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-  .history-metrics { display: flex; flex-wrap: wrap; gap: 5px 14px; font-family: var(--font-mono); font-size: 13px; color: var(--text); font-variant-numeric: tabular-nums; }
-  .history-metrics .dim { color: var(--text-dim); }
-  .history-empty { color: var(--text-dim); font-size: 13px; text-align: center; padding: 10px 0; }
 
   /* ---- fretboard ---- */
   .fretboard-heading {
@@ -430,90 +149,6 @@
   .marker-pair { display: flex; gap: 8px; justify-content: center; }
   .marker-pair span { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: 0.55; }
 
-  /* ---- controls ---- */
-  .controls { display: flex; flex-wrap: wrap; gap: 8px; }
-
-  .btn {
-    font-family: var(--font-display);
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    background: var(--panel-2);
-    color: var(--text);
-    border: 1px solid var(--line);
-    border-radius: 7px;
-    padding: 9px 16px;
-    cursor: pointer;
-    transition: border-color 0.15s, color 0.15s, background 0.15s;
-  }
-
-  .btn:hover { border-color: var(--accent); color: var(--accent-strong); }
-  .btn:active { transform: translateY(1px); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3); }
-  .btn.primary { background: var(--accent); color: #1a1309; border-color: var(--accent); }
-  .btn.primary:hover { background: var(--accent-strong); color: #1a1309; }
-
-  /* ---- settings ---- */
-  .settings-row { display: flex; flex-direction: column; gap: 8px; }
-  .settings-label { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); }
-  .settings-hint { font-size: 12px; line-height: 1.5; color: var(--text-dim); margin: 0; }
-
-  .pill-group { display: flex; flex-wrap: wrap; gap: 6px; }
-  .pill {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    font-weight: 600;
-    background: var(--panel-inset);
-    border: 1px solid var(--line);
-    color: var(--text-muted);
-    padding: 6px 12px;
-    border-radius: 20px;
-    cursor: pointer;
-    user-select: none;
-    transition: border-color 0.15s, color 0.15s, background 0.15s;
-  }
-  .pill.on { border-color: var(--accent); color: var(--accent-strong); background: rgba(215, 154, 61, 0.12); box-shadow: 0 0 8px rgba(215, 154, 61, 0.15); }
-  .pill:active { transform: translateY(1px); }
-
-  .range-row { display: flex; align-items: center; gap: 10px; }
-  .range-row input[type="range"] {
-    flex: 1;
-    -webkit-appearance: none;
-    appearance: none;
-    height: 4px;
-    border-radius: 2px;
-    background: var(--panel-inset);
-    border: 1px solid var(--line);
-    cursor: pointer;
-  }
-  .range-row input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, var(--accent-strong), var(--accent) 70%);
-    border: 2px solid #180f06;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 8px var(--accent-glow);
-    margin-top: -7px;
-  }
-  .range-row input[type="range"]::-moz-range-track {
-    height: 4px;
-    border-radius: 2px;
-    background: var(--panel-inset);
-    border: 1px solid var(--line);
-  }
-  .range-row input[type="range"]::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, var(--accent-strong), var(--accent) 70%);
-    border: 2px solid #180f06;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 8px var(--accent-glow);
-  }
-  .range-value { font-family: var(--font-mono); font-size: 13px; color: var(--text); min-width: 60px; text-align: right; font-variant-numeric: tabular-nums; }
-
-  footer { color: var(--text-dim); font-size: 12px; line-height: 1.6; text-align: center; padding-top: 4px; }
-
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
 <body>
@@ -523,6 +158,10 @@
     <div class="eyebrow">贝斯练习工具</div>
     <h1>指板速认</h1>
     <p class="subtitle">系统随机给出一个音（或音程目标），在真琴上弹出来——麦克风会自动听出你弹的音是否对，不用回到屏幕上点。练的是「音名 → 手上的位置」的真实反应。</p>
+    <nav class="tool-nav">
+      <a href="index.html" class="current">🎸 指板速认</a>
+      <a href="rhythm.html">🥁 节奏跟弹</a>
+    </nav>
   </header>
 
   <div class="panel">

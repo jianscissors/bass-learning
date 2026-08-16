@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>节奏跟弹 · 麦克风节拍训练</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+  /* ---- beat indicator ---- */
+  .beat-row { display: flex; justify-content: center; align-items: center; gap: 16px; padding: 6px 0; }
+  .beat-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--panel-inset);
+    border: 1px solid var(--line);
+    transition: background 0.08s, box-shadow 0.08s, transform 0.08s;
+  }
+  .beat-dot.down { width: 18px; height: 18px; }
+  .beat-dot.lit { background: var(--accent-strong); box-shadow: 0 0 14px var(--accent-glow); transform: scale(1.2); }
+
+  /* ---- LCD accuracy coloring (page-specific override) ---- */
+  .lcd-note.good { color: var(--good); text-shadow: 0 0 18px var(--good-glow); }
+  .lcd-note.bad { color: var(--bad); text-shadow: 0 0 18px var(--bad-glow); }
+
+  /* ---- timing strip ---- */
+  .timing-strip {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 48px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel-inset);
+    overflow: hidden;
+  }
+  .timing-strip::before {
+    content: "";
+    position: absolute;
+    left: 8px; right: 8px; top: 50%;
+    height: 1px;
+    background: var(--line);
+  }
+  .hit-mark {
+    position: relative;
+    z-index: 1;
+    width: 7px;
+    height: 16px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    transition: transform 0.1s;
+  }
+  .hit-mark.perfect { background: var(--good); box-shadow: 0 0 6px var(--good-glow); }
+  .hit-mark.good { background: var(--accent); }
+  .hit-mark.off { background: var(--bad); box-shadow: 0 0 6px var(--bad-glow); }
+  .timing-empty { color: var(--text-dim); font-size: 13px; margin: 0 auto; }
+
+  .center-label { text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="eyebrow">贝斯练习工具</div>
+    <h1>节奏跟弹</h1>
+    <p class="subtitle">跟着节拍器弹，麦克风会听你拨弦的时机，判断是抢拍、拖拍还是踩得准——练的是时值感，不是音准。</p>
+    <nav class="tool-nav">
+      <a href="index.html">🎸 指板速认</a>
+      <a href="rhythm.html" class="current">🥁 节奏跟弹</a>
+    </nav>
+  </header>
+
+  <div class="panel">
+    <div class="settings-row">
+      <div class="settings-label">速度（<span id="bpm-value">80</span> BPM）</div>
+      <div class="range-row">
+        <input type="range" id="bpm-range" min="40" max="200" value="80" step="1">
+        <button class="btn" id="btn-tap-tempo">点击打拍子</button>
+      </div>
+    </div>
+
+    <div class="beat-row" id="beat-row">
+      <span class="beat-dot down" data-beat="0"></span>
+      <span class="beat-dot" data-beat="1"></span>
+      <span class="beat-dot" data-beat="2"></span>
+      <span class="beat-dot" data-beat="3"></span>
+    </div>
+
+    <div class="mic-control" id="mic-control">
+      <button class="mic-toggle" id="mic-toggle"><span class="rec-dot"></span><span id="mic-toggle-label">开始（节拍器 + 麦克风）</span></button>
+      <div class="level-meter"><div class="level-meter-fill" id="level-fill"></div></div>
+      <div class="mic-status" id="mic-status">页面需要通过 https 或本地服务器打开，麦克风才能使用。建议戴耳机听节拍器，避免喇叭声被麦克风一起收进去。</div>
+    </div>
+
+    <div class="lcd">
+      <div class="lcd-label" id="lcd-label">拨弦时机</div>
+      <div class="lcd-challenge" id="lcd-challenge"><span class="lcd-note" id="lcd-note">–</span></div>
+      <div class="lcd-feedback" id="lcd-feedback"></div>
+    </div>
+
+    <div class="settings-label center-label">最近命中（早 ↑ / 晚 ↓）</div>
+    <div class="timing-strip" id="timing-strip"><span class="timing-empty">还没有记录</span></div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-value" id="stat-avg-offset">–</div><div class="stat-label">平均误差</div></div>
+      <div class="stat"><div class="stat-value" id="stat-consistency">–</div><div class="stat-label">稳定度</div></div>
+      <div class="stat"><div class="stat-value" id="stat-hitrate">–</div><div class="stat-label">命中率</div></div>
+      <div class="stat"><div class="stat-value" id="stat-streak">0</div><div class="stat-label">连续命中</div></div>
+    </div>
+
+    <div class="controls">
+      <button class="btn" id="btn-reset">重置成绩</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="row-switches">
+      <div class="settings-label">学习记录</div>
+      <button class="btn" id="btn-clear-history">清除记录</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-value" id="history-today">0 分钟</div><div class="stat-label">今日练习</div></div>
+      <div class="stat"><div class="stat-value" id="history-total">0 分钟</div><div class="stat-label">累计练习</div></div>
+      <div class="stat"><div class="stat-value" id="history-best-streak">0</div><div class="stat-label">历史最佳连续</div></div>
+      <div class="stat"><div class="stat-value" id="history-avg-offset">–</div><div class="stat-label">历史平均误差</div></div>
+    </div>
+    <div class="history-list" id="history-list"></div>
+    <p class="settings-hint">练习时长按"正在运行"的时间计。记录只存在这台设备的浏览器里，换设备或清浏览器数据不会保留。</p>
+  </div>
+
+  <footer>提示：麦克风只听低频（滤掉了节拍器"咔哒"声的音高范围），正常情况下点击声不会被误判成拨弦；但音量开太大、或者用外放而不是耳机，还是建议注意一下。</footer>
+</div>
+
+<script>
+(function () {
+  const MIN_BPM = 40, MAX_BPM = 200;
+  const BEATS_PER_BAR = 4;
+  const SCHEDULE_AHEAD_S = 0.1;
+  const SCHEDULER_INTERVAL_MS = 25;
+  const PERFECT_MS = 30, GOOD_MS = 70;
+  const RMS_THRESHOLD = 0.003;
+  const ONSET_RATIO = 1.7;
+  const MIN_ONSET_GAP_S = 0.15;
+  const TAP_RESET_GAP_MS = 2000;
+
+  const state = {
+    bpm: 80,
+    running: false,
+    hits: [],
+    streak: 0,
+    best: 0,
+    totalHits: 0,
+    withinTolCount: 0,
+    sumOffset: 0,
+    sumAbsOffset: 0,
+  };
+
+  let audioCtx = null, micStream = null, processor = null, lowpass1 = null, lowpass2 = null, silentGain = null;
+  let schedulerId = null, nextNoteTime = 0, beatCounter = 0, metronomeStartTime = 0;
+  let prevRms = 0, lastOnsetAt = -Infinity;
+  let tapTimes = [];
+
+  const el = {};
+  ['bpmValue','bpmRange','btnTapTempo','beatRow','micToggle','micToggleLabel','micStatus',
+   'levelFill','lcdChallenge','lcdFeedback','timingStrip',
+   'statAvgOffset','statConsistency','statHitrate','statStreak','btnReset',
+   'btnClearHistory','historyToday','historyTotal','historyBestStreak','historyAvgOffset','historyList']
+   .forEach(key => { el[key] = document.getElementById(key.replace(/([A-Z])/g, m => '-' + m.toLowerCase())); });
+
+  const beatDots = Array.from(el.beatRow.querySelectorAll('.beat-dot'));
+
+  // ---------- practice history (persisted in localStorage) ----------
+  const HISTORY_KEY = 'bassRhythmTrainer_history_v1';
+
+  function loadHistory() {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && parsed.days) return parsed;
+      }
+    } catch (e) {}
+    return { totalMs: 0, bestStreakEver: 0, sumOffset: 0, hitCount: 0, days: {} };
+  }
+
+  function saveHistory() {
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch (e) {}
+  }
+
+  let history = loadHistory();
+
+  function todayKey() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  function getDayEntry(key) { return history.days[key] || { ms: 0, hits: 0, within: 0, bestStreak: 0, sumOffset: 0 }; }
+
+  function ensureTodayEntry() {
+    const k = todayKey();
+    if (!history.days[k]) history.days[k] = { ms: 0, hits: 0, within: 0, bestStreak: 0, sumOffset: 0 };
+    return history.days[k];
+  }
+
+  function logHit(offsetMs, isWithinTol) {
+    const entry = ensureTodayEntry();
+    entry.hits++;
+    if (isWithinTol) entry.within++;
+    entry.sumOffset += offsetMs;
+    history.sumOffset = (history.sumOffset || 0) + offsetMs;
+    history.hitCount = (history.hitCount || 0) + 1;
+    saveHistory();
+    renderHistoryList();
+  }
+
+  function logStreak(streak) {
+    const entry = ensureTodayEntry();
+    entry.bestStreak = Math.max(entry.bestStreak || 0, streak);
+    history.bestStreakEver = Math.max(history.bestStreakEver || 0, streak);
+    saveHistory();
+    updateTimeDisplays();
+  }
+
+  function formatDuration(ms) {
+    const totalMin = Math.floor(ms / 60000);
+    if (totalMin < 1) return '< 1 分钟';
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return h > 0 ? `${h} 小时 ${m} 分钟` : `${m} 分钟`;
+  }
+
+  function formatSignedMs(ms) { return (ms >= 0 ? '+' : '') + Math.round(ms) + 'ms'; }
+
+  function isActivelyPracticing() {
+    return document.visibilityState === 'visible' && state.running;
+  }
+
+  function updateTimeDisplays() {
+    el.historyToday.textContent = formatDuration(getDayEntry(todayKey()).ms);
+    el.historyTotal.textContent = formatDuration(history.totalMs);
+    el.historyBestStreak.textContent = history.bestStreakEver || 0;
+    el.historyAvgOffset.textContent = history.hitCount > 0 ? formatSignedMs(history.sumOffset / history.hitCount) : '–';
+  }
+
+  function renderHistoryList() {
+    updateTimeDisplays();
+    const keys = Object.keys(history.days).sort().reverse().slice(0, 7);
+    if (keys.length === 0) {
+      el.historyList.innerHTML = '<div class="history-empty">还没有记录，开始练习后这里会显示每天的数据</div>';
+      return;
+    }
+    el.historyList.innerHTML = keys.map(k => {
+      const e = history.days[k];
+      const label = k.slice(5).replace('-', '/');
+      const rate = e.hits > 0 ? Math.round((e.within / e.hits) * 100) + '%' : '–';
+      const avgOff = e.hits > 0 ? formatSignedMs(e.sumOffset / e.hits) : '–';
+      return `<div class="history-row">
+        <span class="history-date">${label}</span>
+        <span class="history-metrics"><span>${formatDuration(e.ms)}</span><span class="dim">命中率 ${rate}</span><span class="dim">平均误差 ${avgOff}</span><span class="dim">最高连续 ${e.bestStreak || 0}</span></span>
+      </div>`;
+    }).join('');
+  }
+
+  setInterval(() => {
+    if (!isActivelyPracticing()) return;
+    const entry = ensureTodayEntry();
+    entry.ms += 1000;
+    history.totalMs += 1000;
+    saveHistory();
+    updateTimeDisplays();
+  }, 1000);
+
+  el.btnClearHistory.addEventListener('click', () => {
+    if (!confirm('确定要清除所有学习记录吗？这个操作无法撤销。')) return;
+    history = { totalMs: 0, bestStreakEver: 0, sumOffset: 0, hitCount: 0, days: {} };
+    saveHistory();
+    renderHistoryList();
+  });
+
+  // ---------- metronome scheduler ----------
+  function scheduleNote(time, beatIdx) {
+    const beatInBar = beatIdx % BEATS_PER_BAR;
+    const isDown = beatInBar === 0;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.frequency.value = isDown ? 1800 : 1400;
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(isDown ? 0.5 : 0.3, time + 0.002);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.05);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(time);
+    osc.stop(time + 0.06);
+
+    const delayMs = Math.max(0, (time - audioCtx.currentTime) * 1000);
+    setTimeout(() => lightBeatDot(beatInBar), delayMs);
+  }
+
+  function lightBeatDot(beatInBar) {
+    beatDots.forEach((d, i) => d.classList.toggle('lit', i === beatInBar));
+    setTimeout(() => { if (beatDots[beatInBar]) beatDots[beatInBar].classList.remove('lit'); }, 110);
+  }
+
+  function schedulerTick() {
+    while (nextNoteTime < audioCtx.currentTime + SCHEDULE_AHEAD_S) {
+      scheduleNote(nextNoteTime, beatCounter);
+      nextNoteTime += 60 / state.bpm;
+      beatCounter++;
+    }
+  }
+
+  function resetMetronomeTiming() {
+    beatCounter = 0;
+    nextNoteTime = audioCtx.currentTime + 0.05;
+    metronomeStartTime = nextNoteTime;
+  }
+
+  function offsetMsFromNearestBeat(t) {
+    const interval = 60 / state.bpm;
+    const beatsElapsed = (t - metronomeStartTime) / interval;
+    const nearestBeat = Math.round(beatsElapsed);
+    const nearestBeatTime = metronomeStartTime + nearestBeat * interval;
+    return (t - nearestBeatTime) * 1000;
+  }
+
+  // ---------- hit scoring ----------
+  function registerHit(t) {
+    const offsetMs = offsetMsFromNearestBeat(t);
+    const absOffset = Math.abs(offsetMs);
+    let judged;
+    if (absOffset <= PERFECT_MS) judged = 'perfect';
+    else if (absOffset <= GOOD_MS) judged = 'good';
+    else judged = 'off';
+
+    state.hits.push({ offsetMs, judged });
+    if (state.hits.length > 24) state.hits.shift();
+
+    state.totalHits++;
+    state.sumOffset += offsetMs;
+    state.sumAbsOffset += absOffset;
+    if (judged !== 'off') {
+      state.withinTolCount++;
+      state.streak++;
+      state.best = Math.max(state.best, state.streak);
+      logStreak(state.streak);
+    } else {
+      state.streak = 0;
+    }
+
+    updateLcd(offsetMs, judged);
+    updateStats();
+    renderTimingStrip();
+    logHit(offsetMs, judged !== 'off');
+  }
+
+  function updateLcd(offsetMs, judged) {
+    const cls = judged === 'perfect' ? 'good' : judged === 'off' ? 'bad' : '';
+    const text = judged === 'perfect' ? '完美' : formatSignedMs(offsetMs);
+    el.lcdChallenge.innerHTML = `<span class="lcd-note ${cls}">${text}</span>`;
+    if (judged === 'perfect') setFeedback('稳', 'good');
+    else if (judged === 'good') setFeedback(offsetMs > 0 ? '有点晚' : '有点早', '');
+    else setFeedback(offsetMs > 0 ? '拖拍了' : '抢拍了', 'bad');
+  }
+
+  function setFeedback(text, kind) {
+    el.lcdFeedback.textContent = text;
+    el.lcdFeedback.classList.remove('good', 'bad');
+    if (kind) el.lcdFeedback.classList.add(kind);
+  }
+
+  function updateStats() {
+    el.statAvgOffset.textContent = state.totalHits > 0 ? formatSignedMs(state.sumOffset / state.totalHits) : '–';
+    el.statConsistency.textContent = state.totalHits > 0 ? '±' + Math.round(state.sumAbsOffset / state.totalHits) + 'ms' : '–';
+    el.statHitrate.textContent = state.totalHits > 0 ? Math.round((state.withinTolCount / state.totalHits) * 100) + '%' : '–';
+    el.statStreak.textContent = state.streak;
+  }
+
+  function renderTimingStrip() {
+    if (state.hits.length === 0) {
+      el.timingStrip.innerHTML = '<span class="timing-empty">还没有记录</span>';
+      return;
+    }
+    el.timingStrip.innerHTML = state.hits.map(h => {
+      const clamped = Math.max(-GOOD_MS, Math.min(GOOD_MS, h.offsetMs));
+      const ty = (clamped / GOOD_MS) * 14;
+      return `<span class="hit-mark ${h.judged}" style="transform: translateY(${ty.toFixed(1)}px);"></span>`;
+    }).join('');
+  }
+
+  function resetStats() {
+    state.hits = []; state.streak = 0; state.best = 0; state.totalHits = 0;
+    state.withinTolCount = 0; state.sumOffset = 0; state.sumAbsOffset = 0;
+    updateStats();
+    renderTimingStrip();
+    el.lcdChallenge.innerHTML = '<span class="lcd-note">–</span>';
+    setFeedback('', '');
+  }
+
+  // ---------- mic + onset detection ----------
+  function onAudioProcess(e) {
+    const input = e.inputBuffer.getChannelData(0);
+    let sum = 0;
+    for (let i = 0; i < input.length; i++) sum += input[i] * input[i];
+    const rms = Math.sqrt(sum / input.length);
+    const t = e.playbackTime;
+
+    el.levelFill.style.width = Math.min(100, Math.round(rms * 700)) + '%';
+
+    const isOnset = rms > prevRms * ONSET_RATIO && rms > RMS_THRESHOLD;
+    prevRms = rms;
+
+    if (isOnset && (t - lastOnsetAt) > MIN_ONSET_GAP_S) {
+      lastOnsetAt = t;
+      registerHit(t);
+    }
+  }
+
+  async function start() {
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    } catch (err) {
+      el.micStatus.textContent = '无法访问麦克风，请检查浏览器的麦克风权限设置。';
+      el.micStatus.classList.add('error');
+      return;
+    }
+
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioCtx.createMediaStreamSource(micStream);
+
+    // Two cascaded lowpass filters keep onset detection listening only to the
+    // bass-range fundamental, so the metronome's higher-pitched click (well
+    // above the cutoff) doesn't get picked up by the mic and scored as a hit.
+    lowpass1 = audioCtx.createBiquadFilter();
+    lowpass1.type = 'lowpass';
+    lowpass1.frequency.value = 400;
+    lowpass2 = audioCtx.createBiquadFilter();
+    lowpass2.type = 'lowpass';
+    lowpass2.frequency.value = 400;
+
+    processor = audioCtx.createScriptProcessor(1024, 1, 1);
+    silentGain = audioCtx.createGain();
+    silentGain.gain.value = 0;
+
+    source.connect(lowpass1);
+    lowpass1.connect(lowpass2);
+    lowpass2.connect(processor);
+    processor.connect(silentGain);
+    silentGain.connect(audioCtx.destination);
+    processor.onaudioprocess = onAudioProcess;
+
+    prevRms = 0;
+    lastOnsetAt = -Infinity;
+    resetMetronomeTiming();
+    schedulerId = setInterval(schedulerTick, SCHEDULER_INTERVAL_MS);
+
+    state.running = true;
+    el.micToggle.classList.add('listening');
+    el.micToggleLabel.textContent = '停止';
+    el.micStatus.textContent = '';
+    el.micStatus.classList.remove('error');
+  }
+
+  function stop() {
+    state.running = false;
+    if (schedulerId) clearInterval(schedulerId);
+    if (processor) { processor.disconnect(); processor.onaudioprocess = null; }
+    if (lowpass1) lowpass1.disconnect();
+    if (lowpass2) lowpass2.disconnect();
+    if (silentGain) silentGain.disconnect();
+    if (micStream) micStream.getTracks().forEach(t => t.stop());
+    if (audioCtx) audioCtx.close();
+    audioCtx = null; processor = null; lowpass1 = null; lowpass2 = null; silentGain = null; micStream = null;
+
+    el.micToggle.classList.remove('listening');
+    el.micToggleLabel.textContent = '开始（节拍器 + 麦克风）';
+    el.levelFill.style.width = '0%';
+    beatDots.forEach(d => d.classList.remove('lit'));
+  }
+
+  el.micToggle.addEventListener('click', () => { state.running ? stop() : start(); });
+
+  // ---------- BPM + tap tempo ----------
+  function setBpm(bpm) {
+    state.bpm = Math.max(MIN_BPM, Math.min(MAX_BPM, bpm));
+    el.bpmRange.value = state.bpm;
+    el.bpmValue.textContent = state.bpm;
+    if (state.running) resetMetronomeTiming();
+  }
+
+  el.bpmRange.addEventListener('input', () => setBpm(Number(el.bpmRange.value)));
+
+  el.btnTapTempo.addEventListener('click', () => {
+    const now = performance.now();
+    if (tapTimes.length && now - tapTimes[tapTimes.length - 1] > TAP_RESET_GAP_MS) tapTimes = [];
+    tapTimes.push(now);
+    if (tapTimes.length > 5) tapTimes.shift();
+    if (tapTimes.length >= 2) {
+      const intervals = [];
+      for (let i = 1; i < tapTimes.length; i++) intervals.push(tapTimes[i] - tapTimes[i - 1]);
+      const avg = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+      setBpm(Math.round(60000 / avg));
+    }
+  });
+
+  el.btnReset.addEventListener('click', resetStats);
+
+  // ---------- init ----------
+  updateStats();
+  renderTimingStrip();
+  renderHistoryList();
+})();
+</script>
+</body>
+</html>
