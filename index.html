@@ -323,7 +323,7 @@
   .stat { background: var(--panel-2); box-shadow: inset 0 1px 0 var(--bevel-hi), inset 0 -8px 14px -10px rgba(0, 0, 0, 0.5); padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; align-items: center; }
   .stat-value { font-family: var(--font-mono); font-size: 19px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
   .stat-label { font-family: var(--font-display); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
-  .stats.stats-2col { grid-template-columns: repeat(2, 1fr); }
+  .stats.stats-3col { grid-template-columns: repeat(3, 1fr); }
 
   /* ---- practice history ---- */
   .history-list { display: flex; flex-direction: column; gap: 6px; }
@@ -605,9 +605,10 @@
       <div class="settings-label">学习记录</div>
       <button class="btn" id="btn-clear-history">清除记录</button>
     </div>
-    <div class="stats stats-2col">
+    <div class="stats stats-3col">
       <div class="stat"><div class="stat-value" id="history-today">0 分钟</div><div class="stat-label">今日练习</div></div>
       <div class="stat"><div class="stat-value" id="history-total">0 分钟</div><div class="stat-label">累计练习</div></div>
+      <div class="stat"><div class="stat-value" id="history-best-streak">0</div><div class="stat-label">历史最佳连对</div></div>
     </div>
     <div class="history-list" id="history-list"></div>
     <p class="settings-hint">练习时长在麦克风作答模式下按"正在监听"的时间计，点击作答模式下按页面打开且可见的时间计。记录只存在这台设备的浏览器里，换设备或清浏览器数据不会保留。</p>
@@ -677,7 +678,7 @@
    'modeNote','modeInterval','inputMic','inputClick','stringToggles','fretRange','fretRangeLabel','fretRangeValue',
    'noteToggles','intervalSettings','intervalToggles','btnReveal','btnSkip','btnReset','micControl','micToggle',
    'micToggleLabel','micStatus','levelFill','livePitch','liveNote','centsMarker','fretboardHeading',
-   'lcdStringTag','stringRuleSwitch','btnClearHistory','historyToday','historyTotal','historyList']
+   'lcdStringTag','stringRuleSwitch','btnClearHistory','historyToday','historyTotal','historyBestStreak','historyList']
    .forEach(key => { el[key] = document.getElementById(key.replace(/([A-Z])/g, m => '-' + m.toLowerCase())); });
 
   // ---------- practice history (persisted in localStorage) ----------
@@ -691,7 +692,7 @@
         if (parsed && typeof parsed === 'object' && parsed.days) return parsed;
       }
     } catch (e) {}
-    return { totalMs: 0, days: {} };
+    return { totalMs: 0, bestStreakEver: 0, days: {} };
   }
 
   function saveHistory() {
@@ -705,11 +706,11 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
-  function getDayEntry(key) { return history.days[key] || { ms: 0, correct: 0, total: 0 }; }
+  function getDayEntry(key) { return history.days[key] || { ms: 0, correct: 0, total: 0, bestStreak: 0 }; }
 
   function ensureTodayEntry() {
     const k = todayKey();
-    if (!history.days[k]) history.days[k] = { ms: 0, correct: 0, total: 0 };
+    if (!history.days[k]) history.days[k] = { ms: 0, correct: 0, total: 0, bestStreak: 0 };
     return history.days[k];
   }
 
@@ -719,6 +720,14 @@
     if (isCorrect) entry.correct++;
     saveHistory();
     renderHistoryList();
+  }
+
+  function logStreak(streak) {
+    const entry = ensureTodayEntry();
+    entry.bestStreak = Math.max(entry.bestStreak || 0, streak);
+    history.bestStreakEver = Math.max(history.bestStreakEver || 0, streak);
+    saveHistory();
+    updateTimeDisplays();
   }
 
   function formatDuration(ms) {
@@ -737,6 +746,7 @@
   function updateTimeDisplays() {
     el.historyToday.textContent = formatDuration(getDayEntry(todayKey()).ms);
     el.historyTotal.textContent = formatDuration(history.totalMs);
+    el.historyBestStreak.textContent = history.bestStreakEver || 0;
   }
 
   function renderHistoryList() {
@@ -752,7 +762,7 @@
       const acc = e.total > 0 ? Math.round((e.correct / e.total) * 100) + '%' : '–';
       return `<div class="history-row">
         <span class="history-date">${label}</span>
-        <span class="history-metrics"><span>${formatDuration(e.ms)}</span><span class="dim">正确率 ${acc}</span></span>
+        <span class="history-metrics"><span>${formatDuration(e.ms)}</span><span class="dim">正确率 ${acc}</span><span class="dim">最高连对 ${e.bestStreak || 0}</span></span>
       </div>`;
     }).join('');
   }
@@ -1017,6 +1027,7 @@
       if (!state.missedThisRound) {
         state.streak++;
         state.best = Math.max(state.best, state.streak);
+        logStreak(state.streak);
         state.reactionTimes.push(timeMs);
         if (state.reactionTimes.length > 30) state.reactionTimes.shift();
       } else {
