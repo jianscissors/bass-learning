@@ -538,6 +538,7 @@
 
   const RMS_THRESHOLD = 0.012;
   const HOLD_MS = 150;
+  const SILENCE_GRACE_MS = 300;
   const ANALYSIS_INTERVAL_MS = 90;
   const MIN_FREQ = 28, MAX_FREQ = 600;
 
@@ -563,6 +564,7 @@
     listening: false,
     matchNoteIndex: null,
     matchStartTime: 0,
+    lastSoundAt: 0,
   };
 
   let audioCtx = null, analyser = null, micStream = null, timeData = null, rafId = null, lastAnalysisAt = 0;
@@ -925,10 +927,14 @@
       el.livePitch.classList.remove('matched');
       el.centsMarker.style.left = '50%';
       el.centsMarker.classList.remove('in-tune');
-      state.matchNoteIndex = null;
+      // A decaying pluck's level dips below the RMS gate between ticks well before
+      // the note actually stops; only treat it as silence after a real gap so those
+      // dips don't keep restarting the hold timer and stall the match.
+      if (ts - state.lastSoundAt > SILENCE_GRACE_MS) state.matchNoteIndex = null;
       return;
     }
 
+    state.lastSoundAt = ts;
     const info = freqToNoteInfo(freq);
     el.liveNote.textContent = `${NOTE_NAMES[info.noteIndex]}${info.octave}`;
     const pct = 50 + Math.max(-50, Math.min(50, info.cents));
