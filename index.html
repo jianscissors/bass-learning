@@ -396,9 +396,7 @@
   .btn.primary:hover { background: var(--accent-strong); color: #1a1309; }
 
   /* ---- settings ---- */
-  .settings { display: flex; flex-direction: column; gap: 14px; }
   .settings-row { display: flex; flex-direction: column; gap: 8px; }
-  .settings-row-inline { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .settings-label { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); }
   .settings-hint { font-size: 12px; line-height: 1.5; color: var(--text-dim); margin: 0; }
 
@@ -454,6 +452,29 @@
     </div>
     <p class="settings-hint">任意弦：弹对任意一根都算过。单弦轮换：每题指定一根弦，轮流出题。全指板：同一个音要在每根启用的弦上都弹一遍才换下一题，LCD 会显示进度。点击作答按弦位判定；麦克风作答听不出是哪根弦，弦位提示靠自己盯住老实弹。</p>
 
+    <div class="settings-row">
+      <div class="settings-label">启用的弦</div>
+      <div class="pill-group" id="string-toggles"></div>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label">品格范围（0 – <span id="fret-range-label">12</span>）</div>
+      <div class="range-row">
+        <input type="range" id="fret-range" min="4" max="15" value="12" step="1">
+        <span class="range-value" id="fret-range-value">0–12 品</span>
+      </div>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label">练习的音</div>
+      <div class="pill-group" id="note-toggles"></div>
+    </div>
+
+    <div class="settings-row" id="interval-settings" style="display:none;">
+      <div class="settings-label">练习的音程</div>
+      <div class="pill-group" id="interval-toggles"></div>
+    </div>
+
     <div class="mic-control" id="mic-control">
       <button class="mic-toggle" id="mic-toggle"><span class="rec-dot"></span><span id="mic-toggle-label">开始跟弹（需要麦克风权限）</span></button>
       <div class="level-meter"><div class="level-meter-fill" id="level-fill"></div></div>
@@ -485,31 +506,6 @@
       <button class="btn" id="btn-reveal">显示答案</button>
       <button class="btn" id="btn-skip">跳过，下一题</button>
       <button class="btn" id="btn-reset">重置成绩</button>
-    </div>
-  </div>
-
-  <div class="panel settings">
-    <div class="settings-row">
-      <div class="settings-label">启用的弦</div>
-      <div class="pill-group" id="string-toggles"></div>
-    </div>
-
-    <div class="settings-row">
-      <div class="settings-label">品格范围（0 – <span id="fret-range-label">12</span>）</div>
-      <div class="range-row">
-        <input type="range" id="fret-range" min="4" max="15" value="12" step="1">
-        <span class="range-value" id="fret-range-value">0–12 品</span>
-      </div>
-    </div>
-
-    <div class="settings-row-inline">
-      <div class="settings-label">仅自然音（不含升降号）</div>
-      <div class="pill-group"><span class="pill" id="natural-toggle">关闭</span></div>
-    </div>
-
-    <div class="settings-row" id="interval-settings" style="display:none;">
-      <div class="settings-label">练习的音程</div>
-      <div class="pill-group" id="interval-toggles"></div>
     </div>
   </div>
 
@@ -547,7 +543,7 @@
     inputMode: 'mic',
     maxFret: 12,
     stringsEnabled: [true, true, true, true],
-    naturalOnly: false,
+    notesEnabled: [...Array(12).keys()].map(i => NATURAL_INDICES.includes(i)),
     intervalsEnabled: INTERVALS.map(() => true),
     stringRule: 'any',
     stringBag: [],
@@ -572,7 +568,7 @@
   const el = {};
   ['fretboard','lcdLabel','lcdChallenge','lcdFeedback','statStreak','statBest','statAccuracy','statAvg',
    'modeNote','modeInterval','inputMic','inputClick','stringToggles','fretRange','fretRangeLabel','fretRangeValue',
-   'naturalToggle','intervalSettings','intervalToggles','btnReveal','btnSkip','btnReset','micControl','micToggle',
+   'noteToggles','intervalSettings','intervalToggles','btnReveal','btnSkip','btnReset','micControl','micToggle',
    'micToggleLabel','micStatus','levelFill','livePitch','liveNote','centsMarker','fretboardHeading',
    'lcdStringTag','stringRuleSwitch']
    .forEach(key => { el[key] = document.getElementById(key.replace(/([A-Z])/g, m => '-' + m.toLowerCase())); });
@@ -611,6 +607,23 @@
         if (state.mode === 'interval') generateChallenge();
       });
       el.intervalToggles.appendChild(pill);
+    });
+  }
+
+  function buildNoteToggles() {
+    el.noteToggles.innerHTML = '';
+    NOTE_NAMES.forEach((name, i) => {
+      const pill = document.createElement('span');
+      pill.className = 'pill' + (state.notesEnabled[i] ? ' on' : '');
+      pill.textContent = name;
+      pill.addEventListener('click', () => {
+        const enabledCount = state.notesEnabled.filter(Boolean).length;
+        if (state.notesEnabled[i] && enabledCount === 1) return;
+        state.notesEnabled[i] = !state.notesEnabled[i];
+        pill.classList.toggle('on', state.notesEnabled[i]);
+        generateChallenge();
+      });
+      el.noteToggles.appendChild(pill);
     });
   }
 
@@ -662,7 +675,7 @@
     return positions;
   }
 
-  function pickNotePool() { return state.naturalOnly ? NATURAL_INDICES : [...Array(12).keys()]; }
+  function pickNotePool() { return [...Array(12).keys()].filter(i => state.notesEnabled[i]); }
 
   // ---------- string rotation ----------
   function shuffle(arr) {
@@ -1040,13 +1053,6 @@
     generateChallenge();
   });
 
-  el.naturalToggle.addEventListener('click', () => {
-    state.naturalOnly = !state.naturalOnly;
-    el.naturalToggle.classList.toggle('on', state.naturalOnly);
-    el.naturalToggle.textContent = state.naturalOnly ? '开启' : '关闭';
-    generateChallenge();
-  });
-
   el.stringRuleSwitch.querySelectorAll('.string-rule-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       state.stringRule = btn.dataset.rule;
@@ -1074,6 +1080,7 @@
 
   // ---------- init ----------
   buildStringToggles();
+  buildNoteToggles();
   buildIntervalToggles();
   refillStringBag();
   setInputMode('mic');
