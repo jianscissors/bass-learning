@@ -55,7 +55,13 @@
         <button class="play-mode-btn active" data-mode="melodic" role="tab" aria-selected="true">先后播放</button>
         <button class="play-mode-btn" data-mode="harmonic" role="tab" aria-selected="false">同时播放</button>
       </div>
+      <div class="mode-switch" role="tablist" aria-label="上行下行" id="direction-switch">
+        <button class="direction-btn active" data-direction="random" role="tab" aria-selected="true">随机</button>
+        <button class="direction-btn" data-direction="up" role="tab" aria-selected="false">只上行</button>
+        <button class="direction-btn" data-direction="down" role="tab" aria-selected="false">只下行</button>
+      </div>
     </div>
+    <p class="settings-hint">上行下行只影响"先后播放"——同时播放时两个音一起响，没有先后顺序可言。</p>
 
     <div class="settings-row">
       <div class="settings-label">根音音区上限（<span id="range-label">G2</span> 以下随机取根音）</div>
@@ -146,6 +152,7 @@
   const state = {
     maxRoot: 43,
     playMode: 'melodic',
+    direction: 'random',
     intervalsEnabled: INTERVALS.map(iv => iv.on),
     challenge: null,
     answered: false,
@@ -158,7 +165,7 @@
   let audioCtx = null;
 
   const el = {};
-  ['modeSwitch','rangeLabel','rangeSlider','lcdLabel','lcdNote','lcdIcon','lcdNotesTag','lcdFeedback',
+  ['modeSwitch','directionSwitch','rangeLabel','rangeSlider','lcdLabel','lcdNote','lcdIcon','lcdNotesTag','lcdFeedback',
    'btnPlay','btnReplay','intervalGrid','statStreak','statBest','statAccuracy','statTotal',
    'btnSkip','btnReset','intervalToggles','btnClearHistory','historyToday','historyTotal',
    'historyBestStreak','historyAccuracy','historyList']
@@ -343,7 +350,9 @@
     const ivIndex = INTERVALS.indexOf(iv);
     const root = MIN_ROOT + Math.floor(Math.random() * (state.maxRoot - MIN_ROOT + 1));
     const upper = root + iv.semitones;
-    const reversed = Math.random() < 0.5;
+    const reversed = state.direction === 'up' ? false
+      : state.direction === 'down' ? true
+      : Math.random() < 0.5;
     const notes = reversed ? [upper, root] : [root, upper];
 
     state.challenge = { intervalIndex: ivIndex, notes };
@@ -434,6 +443,17 @@
         b.classList.toggle('active', b === btn);
         b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
       });
+    });
+  });
+
+  el.directionSwitch.querySelectorAll('.direction-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.direction = btn.dataset.direction;
+      el.directionSwitch.querySelectorAll('.direction-btn').forEach(b => {
+        b.classList.toggle('active', b === btn);
+        b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+      });
+      generateChallenge();
     });
   });
 
