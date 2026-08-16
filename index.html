@@ -90,6 +90,7 @@
 
   .mode-switch {
     display: inline-flex;
+    flex-wrap: wrap;
     background: var(--panel-inset);
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -331,6 +332,9 @@
   .string-row.not-target { opacity: 0.35; }
   .string-row.target-string .string-label { color: var(--accent-strong); }
   .string-row.target-string::before { opacity: 1; box-shadow: 0 0 8px var(--accent-glow); }
+  .string-row.done-string { opacity: 0.7; }
+  .string-row.done-string .string-label { color: var(--good); }
+  .string-row.done-string::before { opacity: 0.8; background: linear-gradient(90deg, var(--good), #bcd99e 40%, var(--good)); }
 
   .fret-cell {
     position: relative;
@@ -485,9 +489,13 @@
     </div>
 
     <div class="settings-row">
-      <div class="settings-label">指定弦模式</div>
-      <div class="pill-group"><span class="pill" id="require-string-toggle">关闭</span></div>
-      <p class="settings-hint">开启后每题会指定一根弦，在启用的弦之间轮流出题，逼自己把同一个音在每根弦上都摸熟。点击作答会按弦位判对错；麦克风作答只能听出音准，弦是靠你自己盯住提示、老实弹在指定的弦上。</p>
+      <div class="settings-label">弦位规则</div>
+      <div class="mode-switch" role="tablist" aria-label="弦位规则" id="string-rule-switch">
+        <button class="string-rule-btn active" data-rule="any" role="tab" aria-selected="true">任意弦</button>
+        <button class="string-rule-btn" data-rule="single" role="tab" aria-selected="false">单弦轮换</button>
+        <button class="string-rule-btn" data-rule="full" role="tab" aria-selected="false">全指板</button>
+      </div>
+      <p class="settings-hint">任意弦：弹对任意一根都算过。单弦轮换：每题指定一根弦，在启用的弦之间轮流出题。全指板：同一个音要在每根启用的弦上都弹一遍才算过这一题，LCD 会显示进度。点击作答会按弦位判定对错；麦克风作答听不出是哪根弦，弦位提示靠你自己盯住老实弹。</p>
     </div>
 
     <div class="settings-row">
@@ -544,7 +552,7 @@
     stringsEnabled: [true, true, true, true],
     naturalOnly: false,
     intervalsEnabled: INTERVALS.map(() => true),
-    requireString: false,
+    stringRule: 'any',
     stringBag: [],
     challenge: null,
     startTime: 0,
@@ -568,7 +576,7 @@
    'modeNote','modeInterval','inputMic','inputClick','stringToggles','fretRange','fretRangeLabel','fretRangeValue',
    'naturalToggle','intervalSettings','intervalToggles','btnReveal','btnSkip','btnReset','micControl','micToggle',
    'micToggleLabel','micStatus','levelFill','livePitch','liveNote','centsMarker','fretboardHeading',
-   'requireStringToggle','lcdStringTag']
+   'lcdStringTag','stringRuleSwitch']
    .forEach(key => { el[key] = document.getElementById(key.replace(/([A-Z])/g, m => '-' + m.toLowerCase())); });
 
   // ---------- fretboard ----------
@@ -676,11 +684,13 @@
     return state.stringBag.pop();
   }
 
-  function highlightTargetStringRow(targetString) {
+  function highlightTargetStringRow(targetString, doneStrings) {
+    doneStrings = doneStrings || [];
     el.fretboard.querySelectorAll('.string-row').forEach(row => {
       const si = Number(row.dataset.string);
       row.classList.toggle('target-string', targetString !== undefined && si === targetString);
-      row.classList.toggle('not-target', targetString !== undefined && si !== targetString);
+      row.classList.toggle('done-string', doneStrings.includes(si));
+      row.classList.toggle('not-target', targetString !== undefined && si !== targetString && !doneStrings.includes(si));
     });
   }
 
@@ -694,22 +704,35 @@
     }
 
     const pool = pickNotePool();
-    const targetString = state.requireString ? nextTargetString() : undefined;
+    let queue = null;
+    if (state.stringRule === 'single') queue = [nextTargetString()];
+    else if (state.stringRule === 'full') queue = shuffle(STRINGS.map((_, i) => i).filter(i => state.stringsEnabled[i]));
+
+    const isReachable = note => queue
+      ? queue.every(si => reachablePositions(note, si).length > 0)
+      : reachablePositions(note).length > 0;
+
     let attempts = 0, challenge = null;
 
     while (attempts < 200) {
       attempts++;
       if (state.mode === 'note') {
         const note = pool[Math.floor(Math.random() * pool.length)];
-        if (reachablePositions(note, targetString).length > 0) { challenge = { type: 'note', note, string: targetString }; break; }
+        if (isReachable(note)) { challenge = { type: 'note', note }; break; }
       } else {
         const enabledIntervals = INTERVALS.filter((_, i) => state.intervalsEnabled[i]);
         if (enabledIntervals.length === 0) break;
         const root = pool[Math.floor(Math.random() * pool.length)];
         const iv = enabledIntervals[Math.floor(Math.random() * enabledIntervals.length)];
         const note = (root + iv.semitones) % 12;
-        if (reachablePositions(note, targetString).length > 0) { challenge = { type: 'interval', root, interval: iv, note, string: targetString }; break; }
+        if (isReachable(note)) { challenge = { type: 'interval', root, interval: iv, note }; break; }
       }
+    }
+
+    if (challenge) {
+      challenge.stringQueue = queue;
+      challenge.stringIndex = 0;
+      challenge.string = queue ? queue[0] : undefined;
     }
 
     if (!challenge) {
@@ -746,12 +769,15 @@
     }
 
     if (state.challenge.string !== undefined) {
-      el.lcdStringTag.textContent = `在 ${STRINGS[state.challenge.string].name} 弦`;
+      const q = state.challenge.stringQueue;
+      const progress = q.length > 1 ? ` · 第 ${state.challenge.stringIndex + 1}/${q.length} 根弦` : '';
+      el.lcdStringTag.textContent = `在 ${STRINGS[state.challenge.string].name} 弦${progress}`;
       el.lcdStringTag.style.display = 'inline-block';
     } else {
       el.lcdStringTag.style.display = 'none';
     }
-    highlightTargetStringRow(state.challenge.string);
+    const doneStrings = state.challenge.stringQueue ? state.challenge.stringQueue.slice(0, state.challenge.stringIndex) : [];
+    highlightTargetStringRow(state.challenge.string, doneStrings);
   }
 
   function clearCellStates() {
@@ -789,7 +815,24 @@
     }
     updateStats();
     state.confirmedThisRound = true;
-    setTimeout(generateChallenge, 700);
+    setTimeout(advanceChallenge, 700);
+  }
+
+  function advanceChallenge() {
+    const ch = state.challenge;
+    if (ch && ch.stringQueue && ch.stringIndex < ch.stringQueue.length - 1) {
+      ch.stringIndex++;
+      ch.string = ch.stringQueue[ch.stringIndex];
+      state.missedThisRound = false;
+      state.revealedThisRound = false;
+      state.confirmedThisRound = false;
+      state.matchNoteIndex = null;
+      clearCellStates();
+      renderChallenge();
+      setFeedback('', '');
+    } else {
+      generateChallenge();
+    }
   }
 
   function updateStats() {
@@ -1002,12 +1045,16 @@
     generateChallenge();
   });
 
-  el.requireStringToggle.addEventListener('click', () => {
-    state.requireString = !state.requireString;
-    el.requireStringToggle.classList.toggle('on', state.requireString);
-    el.requireStringToggle.textContent = state.requireString ? '开启' : '关闭';
-    refillStringBag();
-    generateChallenge();
+  el.stringRuleSwitch.querySelectorAll('.string-rule-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.stringRule = btn.dataset.rule;
+      el.stringRuleSwitch.querySelectorAll('.string-rule-btn').forEach(b => {
+        b.classList.toggle('active', b === btn);
+        b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+      });
+      refillStringBag();
+      generateChallenge();
+    });
   });
 
   el.btnReveal.addEventListener('click', () => {
