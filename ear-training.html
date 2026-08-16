@@ -163,6 +163,7 @@
   };
 
   let audioCtx = null;
+  let autoAdvanceTimer = null;
 
   const el = {};
   ['modeSwitch','directionSwitch','rangeLabel','rangeSlider','lcdLabel','lcdNote','lcdIcon','lcdNotesTag','lcdFeedback',
@@ -340,6 +341,7 @@
 
   // ---------- challenge ----------
   function generateChallenge() {
+    if (autoAdvanceTimer) { clearTimeout(autoAdvanceTimer); autoAdvanceTimer = null; }
     const enabled = INTERVALS.filter((_, i) => state.intervalsEnabled[i]);
     if (enabled.length === 0) {
       state.challenge = null;
@@ -415,7 +417,7 @@
     }
     logAnswer(isCorrect);
     updateStats();
-    setTimeout(generateChallenge, 1400);
+    autoAdvanceTimer = setTimeout(generateChallenge, 2800);
   }
 
   function updateStats() {
