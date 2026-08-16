@@ -610,6 +610,7 @@
   const SILENCE_GRACE_MS = 350;
   const ANALYSIS_INTERVAL_MS = 50;
   const MIN_FREQ = 28, MAX_FREQ = 600;
+  const ONSET_RATIO = 1.6;
 
   const state = {
     mode: 'note',
@@ -634,6 +635,8 @@
     matchNoteIndex: null,
     matchStartTime: 0,
     lastSoundAt: 0,
+    prevRms: 0,
+    awaitingAttack: true,
   };
 
   let audioCtx = null, analyser = null, micStream = null, timeData = null, rafId = null, lastAnalysisAt = 0;
@@ -834,6 +837,7 @@
     state.revealedThisRound = false;
     state.confirmedThisRound = false;
     state.matchNoteIndex = null;
+    state.awaitingAttack = true;
     clearCellStates();
     renderChallenge();
     setFeedback('', '');
@@ -911,6 +915,7 @@
       state.revealedThisRound = false;
       state.confirmedThisRound = false;
       state.matchNoteIndex = null;
+      state.awaitingAttack = true;
       clearCellStates();
       renderChallenge();
       setFeedback('', '');
@@ -1008,11 +1013,21 @@
     const { freq, rms } = detectPitch(timeData, audioCtx.sampleRate);
     el.levelFill.style.width = Math.min(100, Math.round(rms * 400)) + '%';
 
+    // In "全指板" (and single-string) mode, back-to-back targets are often the
+    // *same note* on a different string — a still-ringing pluck from the string
+    // just completed would otherwise satisfy the next string too, with no way
+    // to tell from audio alone that no new string was actually struck. Require
+    // either real silence or a fresh, louder attack since the target last
+    // changed before a match is allowed to start counting toward confirmation.
+    if (rms > state.prevRms * ONSET_RATIO && rms > RMS_THRESHOLD * 2) state.awaitingAttack = false;
+    state.prevRms = rms;
+
     if (!freq) {
       el.liveNote.textContent = '–';
       el.livePitch.classList.remove('matched');
       el.centsMarker.style.left = '50%';
       el.centsMarker.classList.remove('in-tune');
+      state.awaitingAttack = false;
       // A decaying pluck's level dips below the RMS gate between ticks well before
       // the note actually stops; only treat it as silence after a real gap so those
       // dips don't keep restarting the hold timer and stall the match.
@@ -1030,7 +1045,7 @@
     const isTarget = state.challenge && info.noteIndex === state.challenge.note;
     el.livePitch.classList.toggle('matched', !!isTarget);
 
-    if (!state.challenge || state.confirmedThisRound) return;
+    if (!state.challenge || state.confirmedThisRound || state.awaitingAttack) return;
 
     if (info.noteIndex !== state.matchNoteIndex) {
       state.matchNoteIndex = info.noteIndex;
@@ -1059,6 +1074,8 @@
     source.connect(analyser);
 
     state.listening = true;
+    state.prevRms = 0;
+    state.awaitingAttack = true;
     lastAnalysisAt = 0;
     el.micToggle.classList.add('listening');
     el.micToggleLabel.textContent = '正在监听 · 点击停止';
