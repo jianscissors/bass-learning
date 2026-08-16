@@ -446,7 +446,13 @@
         <button id="input-mic" class="active" role="tab" aria-selected="true">麦克风作答</button>
         <button id="input-click" role="tab" aria-selected="false">点击作答</button>
       </div>
+      <div class="mode-switch" role="tablist" aria-label="弦位规则" id="string-rule-switch">
+        <button class="string-rule-btn active" data-rule="any" role="tab" aria-selected="true">任意弦</button>
+        <button class="string-rule-btn" data-rule="single" role="tab" aria-selected="false">单弦轮换</button>
+        <button class="string-rule-btn" data-rule="full" role="tab" aria-selected="false">全指板</button>
+      </div>
     </div>
+    <p class="settings-hint">任意弦：弹对任意一根都算过。单弦轮换：每题指定一根弦，轮流出题。全指板：同一个音要在每根启用的弦上都弹一遍才换下一题，LCD 会显示进度。点击作答按弦位判定；麦克风作答听不出是哪根弦，弦位提示靠自己盯住老实弹。</p>
 
     <div class="mic-control" id="mic-control">
       <button class="mic-toggle" id="mic-toggle"><span class="rec-dot"></span><span id="mic-toggle-label">开始跟弹（需要麦克风权限）</span></button>
@@ -489,16 +495,6 @@
     </div>
 
     <div class="settings-row">
-      <div class="settings-label">弦位规则</div>
-      <div class="mode-switch" role="tablist" aria-label="弦位规则" id="string-rule-switch">
-        <button class="string-rule-btn active" data-rule="any" role="tab" aria-selected="true">任意弦</button>
-        <button class="string-rule-btn" data-rule="single" role="tab" aria-selected="false">单弦轮换</button>
-        <button class="string-rule-btn" data-rule="full" role="tab" aria-selected="false">全指板</button>
-      </div>
-      <p class="settings-hint">任意弦：弹对任意一根都算过。单弦轮换：每题指定一根弦，在启用的弦之间轮流出题。全指板：同一个音要在每根启用的弦上都弹一遍才算过这一题，LCD 会显示进度。点击作答会按弦位判定对错；麦克风作答听不出是哪根弦，弦位提示靠你自己盯住老实弹。</p>
-    </div>
-
-    <div class="settings-row">
       <div class="settings-label">品格范围（0 – <span id="fret-range-label">12</span>）</div>
       <div class="range-row">
         <input type="range" id="fret-range" min="4" max="15" value="12" step="1">
@@ -517,7 +513,7 @@
     </div>
   </div>
 
-  <footer>提示：默认弹哪一个把位都算对；开启「指定弦模式」后题目会亮出一根弦，练的是那根弦上的位置。安静的房间、离麦克风近一点，识别会更准。</footer>
+  <footer>提示：顶部「弦位规则」切到单弦轮换或全指板后，题目会亮出该弹哪根弦。安静的房间、离麦克风近一点，识别会更准。</footer>
 </div>
 
 <script>
