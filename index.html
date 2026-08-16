@@ -1,0 +1,953 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>指板速认 · 麦克风跟弹练习</title>
+<style>
+  :root {
+    --bg: #15110d;
+    --panel: #1e1712;
+    --panel-2: #241b13;
+    --panel-inset: #100d09;
+    --line: #382c20;
+    --text: #f1e7d8;
+    --text-muted: #a4937c;
+    --text-dim: #6f6151;
+    --accent: #d79a3d;
+    --accent-strong: #e8b25c;
+    --accent-glow: rgba(215, 154, 61, 0.35);
+    --good: #8bb15c;
+    --good-glow: rgba(139, 177, 92, 0.5);
+    --bad: #c85a44;
+    --bad-glow: rgba(200, 90, 68, 0.5);
+    --wood-1: #2b2015;
+    --wood-2: #221910;
+    --fret-metal: #a89e8a;
+    --nut: #ddd0b4;
+    --rec: #d9584a;
+
+    --font-display: ui-sans-serif, "SF Compact", "Segoe UI Semibold", system-ui, -apple-system, sans-serif;
+    --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    margin: 0;
+    padding: 32px 16px 48px;
+    display: flex;
+    justify-content: center;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 760px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  header { display: flex; flex-direction: column; gap: 6px; }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: clamp(24px, 4vw, 30px);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .subtitle { color: var(--text-muted); font-size: 14px; line-height: 1.5; max-width: 60ch; }
+
+  .eyebrow {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 12px 30px rgba(0,0,0,0.35);
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .row-switches { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; }
+
+  .mode-switch {
+    display: inline-flex;
+    background: var(--panel-inset);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 3px;
+    gap: 3px;
+  }
+
+  .mode-switch button {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .mode-switch button.active { background: var(--accent); color: #1a1309; }
+  .mode-switch button:not(.active):hover { color: var(--text); }
+
+  /* ---- mic control ---- */
+  .mic-control { display: flex; flex-direction: column; gap: 10px; }
+
+  .mic-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .mic-toggle:hover { border-color: var(--accent); }
+  .mic-toggle.listening { border-color: var(--rec); color: var(--text); }
+
+  .rec-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--text-dim);
+  }
+  .mic-toggle.listening .rec-dot {
+    background: var(--rec);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--bad-glow); }
+    50% { opacity: 0.5; }
+  }
+
+  .mic-status { font-size: 12px; color: var(--text-dim); text-align: center; min-height: 16px; }
+  .mic-status.error { color: var(--bad); }
+
+  .level-meter {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--panel-inset);
+    border: 1px solid var(--line);
+    overflow: hidden;
+  }
+  .level-meter-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--good), var(--accent));
+    transition: width 0.08s linear;
+  }
+
+  .live-pitch {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-dim);
+    min-height: 18px;
+  }
+  .live-pitch .note { color: var(--text-muted); font-weight: 600; }
+  .live-pitch.matched .note { color: var(--good); }
+
+  .cents-bar {
+    position: relative;
+    width: 110px;
+    height: 6px;
+    background: var(--panel-inset);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+  }
+  .cents-bar::before {
+    content: "";
+    position: absolute;
+    left: 50%; top: -2px; bottom: -2px;
+    width: 1px;
+    background: var(--text-dim);
+  }
+  .cents-marker {
+    position: absolute;
+    top: -2px;
+    width: 4px; height: 10px;
+    border-radius: 2px;
+    background: var(--accent);
+    transform: translateX(-50%);
+    left: 50%;
+    transition: left 0.08s linear, background 0.1s;
+  }
+  .cents-marker.in-tune { background: var(--good); }
+
+  /* ---- LCD readout ---- */
+  .lcd {
+    background: var(--panel-inset);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 22px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+    min-height: 130px;
+    justify-content: center;
+  }
+
+  .lcd-label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .lcd-challenge { display: flex; align-items: baseline; justify-content: center; gap: 12px; flex-wrap: wrap; }
+
+  .lcd-note {
+    font-family: var(--font-mono);
+    font-size: clamp(40px, 9vw, 56px);
+    font-weight: 600;
+    color: var(--accent-strong);
+    text-shadow: 0 0 18px var(--accent-glow);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .lcd-op { font-family: var(--font-body); font-size: 16px; color: var(--text-dim); }
+
+  .lcd-interval {
+    font-family: var(--font-mono);
+    font-size: clamp(24px, 5vw, 32px);
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .lcd-feedback {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    height: 16px;
+    color: var(--text-dim);
+  }
+  .lcd-feedback.good { color: var(--good); }
+  .lcd-feedback.bad { color: var(--bad); }
+
+  /* ---- stats row ---- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .stat { background: var(--panel-2); padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; align-items: center; }
+  .stat-value { font-family: var(--font-mono); font-size: 19px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+  .stat-label { font-family: var(--font-display); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
+
+  /* ---- fretboard ---- */
+  .fretboard-heading {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .fretboard-scroll {
+    overflow-x: auto;
+    border-radius: 10px;
+    background: linear-gradient(180deg, var(--wood-1), var(--wood-2));
+    border: 1px solid var(--line);
+    padding: 10px 6px 4px;
+  }
+
+  .fret-row { display: grid; align-items: center; }
+  .fret-numbers { padding-bottom: 6px; }
+  .fret-numbers span { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); text-align: center; font-variant-numeric: tabular-nums; }
+
+  .string-row { position: relative; height: 46px; }
+  .string-row::before {
+    content: "";
+    position: absolute;
+    left: 4px; right: 0; top: 50%;
+    height: var(--string-thickness, 2px);
+    background: linear-gradient(90deg, var(--fret-metal), #c9bea3 40%, var(--fret-metal));
+    transform: translateY(-50%);
+    opacity: 0.65;
+    z-index: 0;
+  }
+
+  .string-label { font-family: var(--font-display); font-size: 12px; font-weight: 700; color: var(--text-muted); text-align: center; z-index: 1; }
+
+  .fret-cell {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--fret-metal);
+    opacity: 0.9;
+    padding: 0;
+  }
+  .fret-cell.interactive { cursor: pointer; }
+  .fret-cell:last-child { border-right: none; }
+  .fret-cell.nut { border-right: 3px solid var(--nut); }
+
+  .fret-dot {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid transparent;
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+  }
+
+  .fret-cell.interactive:hover .fret-dot { background: rgba(241, 231, 216, 0.08); border-color: var(--line); }
+  .fret-cell:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: -2px; }
+
+  .fret-cell.correct .fret-dot { background: var(--good); border-color: var(--good); box-shadow: 0 0 14px var(--good-glow); transform: scale(1.08); }
+  .fret-cell.wrong .fret-dot { background: var(--bad); border-color: var(--bad); box-shadow: 0 0 14px var(--bad-glow); }
+  .fret-cell.reveal-ring .fret-dot { border-color: var(--accent-strong); box-shadow: 0 0 10px var(--accent-glow); }
+
+  .markers-row { height: 16px; }
+  .marker-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: 0.55; justify-self: center; }
+  .marker-pair { display: flex; gap: 8px; justify-content: center; }
+  .marker-pair span { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: 0.55; }
+
+  /* ---- controls ---- */
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .btn {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 9px 16px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+
+  .btn:hover { border-color: var(--accent); color: var(--accent-strong); }
+  .btn:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 1px; }
+  .btn.primary { background: var(--accent); color: #1a1309; border-color: var(--accent); }
+  .btn.primary:hover { background: var(--accent-strong); color: #1a1309; }
+
+  /* ---- settings ---- */
+  .settings { display: flex; flex-direction: column; gap: 14px; }
+  .settings-row { display: flex; flex-direction: column; gap: 8px; }
+  .settings-row-inline { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .settings-label { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); }
+
+  .pill-group { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pill {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--panel-inset);
+    border: 1px solid var(--line);
+    color: var(--text-muted);
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .pill.on { border-color: var(--accent); color: var(--accent-strong); background: rgba(215, 154, 61, 0.12); }
+
+  .range-row { display: flex; align-items: center; gap: 10px; }
+  .range-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+  .range-value { font-family: var(--font-mono); font-size: 13px; color: var(--text); min-width: 60px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  footer { color: var(--text-dim); font-size: 12px; line-height: 1.6; text-align: center; padding-top: 4px; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="eyebrow">贝斯练习工具</div>
+    <h1>指板速认</h1>
+    <p class="subtitle">系统随机给出一个音（或音程目标），在真琴上弹出来——麦克风会自动听出你弹的音是否对，不用回到屏幕上点。练的是「音名 → 手上的位置」的真实反应。</p>
+  </header>
+
+  <div class="panel">
+    <div class="row-switches">
+      <div class="mode-switch" role="tablist" aria-label="练习模式">
+        <button id="mode-note" class="active" role="tab" aria-selected="true">认音模式</button>
+        <button id="mode-interval" role="tab" aria-selected="false">音程模式</button>
+      </div>
+      <div class="mode-switch" role="tablist" aria-label="作答方式">
+        <button id="input-mic" class="active" role="tab" aria-selected="true">麦克风作答</button>
+        <button id="input-click" role="tab" aria-selected="false">点击作答</button>
+      </div>
+    </div>
+
+    <div class="mic-control" id="mic-control">
+      <button class="mic-toggle" id="mic-toggle"><span class="rec-dot"></span><span id="mic-toggle-label">开始跟弹（需要麦克风权限）</span></button>
+      <div class="level-meter"><div class="level-meter-fill" id="level-fill"></div></div>
+      <div class="mic-status" id="mic-status">页面需要通过 https 或本地服务器打开，麦克风才能使用。</div>
+      <div class="live-pitch" id="live-pitch">
+        <span>听到：<span class="note" id="live-note">–</span></span>
+        <span class="cents-bar"><span class="cents-marker" id="cents-marker"></span></span>
+      </div>
+    </div>
+
+    <div class="lcd">
+      <div class="lcd-label" id="lcd-label">找到这个音</div>
+      <div class="lcd-challenge" id="lcd-challenge"><span class="lcd-note" id="lcd-note">–</span></div>
+      <div class="lcd-feedback" id="lcd-feedback"></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-value" id="stat-streak">0</div><div class="stat-label">连对</div></div>
+      <div class="stat"><div class="stat-value" id="stat-best">0</div><div class="stat-label">最佳连对</div></div>
+      <div class="stat"><div class="stat-value" id="stat-accuracy">–</div><div class="stat-label">正确率</div></div>
+      <div class="stat"><div class="stat-value" id="stat-avg">–</div><div class="stat-label">平均反应</div></div>
+    </div>
+
+    <div class="fretboard-heading" id="fretboard-heading">参考指板（弹对后会亮起所有可能的位置）</div>
+    <div class="fretboard-scroll"><div id="fretboard"></div></div>
+
+    <div class="controls">
+      <button class="btn" id="btn-reveal">显示答案</button>
+      <button class="btn" id="btn-skip">跳过，下一题</button>
+      <button class="btn" id="btn-reset">重置成绩</button>
+    </div>
+  </div>
+
+  <div class="panel settings">
+    <div class="settings-row">
+      <div class="settings-label">启用的弦</div>
+      <div class="pill-group" id="string-toggles"></div>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label">品格范围（0 – <span id="fret-range-label">12</span>）</div>
+      <div class="range-row">
+        <input type="range" id="fret-range" min="4" max="15" value="12" step="1">
+        <span class="range-value" id="fret-range-value">0–12 品</span>
+      </div>
+    </div>
+
+    <div class="settings-row-inline">
+      <div class="settings-label">仅自然音（不含升降号）</div>
+      <div class="pill-group"><span class="pill" id="natural-toggle">关闭</span></div>
+    </div>
+
+    <div class="settings-row" id="interval-settings" style="display:none;">
+      <div class="settings-label">练习的音程</div>
+      <div class="pill-group" id="interval-toggles"></div>
+    </div>
+  </div>
+
+  <footer>提示：同一个音在指板上通常不止一个位置，麦克风只判断音名对不对，弹哪一个把位都算对。安静的房间、离麦克风近一点，识别会更准。</footer>
+</div>
+
+<script>
+(function () {
+  const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  const NATURAL_INDICES = [0, 2, 4, 5, 7, 9, 11];
+  const STRINGS = [
+    { name: 'G', open: 7, thickness: 1.5 },
+    { name: 'D', open: 2, thickness: 2 },
+    { name: 'A', open: 9, thickness: 2.5 },
+    { name: 'E', open: 4, thickness: 3.5 },
+  ];
+  const INTERVALS = [
+    { name: '小三度', semitones: 3 },
+    { name: '大三度', semitones: 4 },
+    { name: '纯四度', semitones: 5 },
+    { name: '纯五度', semitones: 7 },
+    { name: '小七度', semitones: 10 },
+    { name: '大七度', semitones: 11 },
+    { name: '八度', semitones: 12 },
+  ];
+
+  const RMS_THRESHOLD = 0.012;
+  const HOLD_MS = 150;
+  const ANALYSIS_INTERVAL_MS = 90;
+  const MIN_FREQ = 28, MAX_FREQ = 600;
+
+  const state = {
+    mode: 'note',
+    inputMode: 'mic',
+    maxFret: 12,
+    stringsEnabled: [true, true, true, true],
+    naturalOnly: false,
+    intervalsEnabled: INTERVALS.map(() => true),
+    challenge: null,
+    startTime: 0,
+    missedThisRound: false,
+    revealedThisRound: false,
+    confirmedThisRound: false,
+    streak: 0,
+    best: 0,
+    correct: 0,
+    total: 0,
+    reactionTimes: [],
+    listening: false,
+    matchNoteIndex: null,
+    matchStartTime: 0,
+  };
+
+  let audioCtx = null, analyser = null, micStream = null, timeData = null, rafId = null, lastAnalysisAt = 0;
+
+  const el = {};
+  ['fretboard','lcdLabel','lcdChallenge','lcdFeedback','statStreak','statBest','statAccuracy','statAvg',
+   'modeNote','modeInterval','inputMic','inputClick','stringToggles','fretRange','fretRangeLabel','fretRangeValue',
+   'naturalToggle','intervalSettings','intervalToggles','btnReveal','btnSkip','btnReset','micControl','micToggle',
+   'micToggleLabel','micStatus','levelFill','livePitch','liveNote','centsMarker','fretboardHeading']
+   .forEach(key => { el[key] = document.getElementById(key.replace(/([A-Z])/g, m => '-' + m.toLowerCase())); });
+
+  // ---------- fretboard ----------
+  function buildStringToggles() {
+    el.stringToggles.innerHTML = '';
+    STRINGS.forEach((s, i) => {
+      const pill = document.createElement('span');
+      pill.className = 'pill on';
+      pill.textContent = s.name + ' 弦';
+      pill.addEventListener('click', () => {
+        const enabledCount = state.stringsEnabled.filter(Boolean).length;
+        if (state.stringsEnabled[i] && enabledCount === 1) return;
+        state.stringsEnabled[i] = !state.stringsEnabled[i];
+        pill.classList.toggle('on', state.stringsEnabled[i]);
+        renderFretboard();
+        generateChallenge();
+      });
+      el.stringToggles.appendChild(pill);
+    });
+  }
+
+  function buildIntervalToggles() {
+    el.intervalToggles.innerHTML = '';
+    INTERVALS.forEach((iv, i) => {
+      const pill = document.createElement('span');
+      pill.className = 'pill on';
+      pill.textContent = iv.name;
+      pill.addEventListener('click', () => {
+        const enabledCount = state.intervalsEnabled.filter(Boolean).length;
+        if (state.intervalsEnabled[i] && enabledCount === 1) return;
+        state.intervalsEnabled[i] = !state.intervalsEnabled[i];
+        pill.classList.toggle('on', state.intervalsEnabled[i]);
+        if (state.mode === 'interval') generateChallenge();
+      });
+      el.intervalToggles.appendChild(pill);
+    });
+  }
+
+  function renderFretboard() {
+    const maxFret = state.maxFret;
+    const cols = `56px repeat(${maxFret + 1}, minmax(40px, 52px))`;
+    let html = '';
+
+    html += `<div class="fret-row fret-numbers" style="grid-template-columns:${cols}"><span></span>`;
+    for (let f = 0; f <= maxFret; f++) html += `<span>${f}</span>`;
+    html += `</div>`;
+
+    STRINGS.forEach((s, si) => {
+      const enabled = state.stringsEnabled[si];
+      html += `<div class="fret-row string-row" style="grid-template-columns:${cols};--string-thickness:${s.thickness}px;${enabled ? '' : 'opacity:0.3;'}">`;
+      html += `<span class="string-label">${s.name}</span>`;
+      for (let f = 0; f <= maxFret; f++) {
+        const noteIdx = (s.open + f) % 12;
+        const interactive = state.inputMode === 'click';
+        html += `<button class="fret-cell${f === 0 ? ' nut' : ''}${interactive ? ' interactive' : ''}" data-string="${si}" data-fret="${f}" data-note="${noteIdx}" ${enabled ? '' : 'disabled'} ${interactive ? '' : 'tabindex="-1"'} aria-label="${s.name}弦 第${f}品"><span class="fret-dot"></span></button>`;
+      }
+      html += `</div>`;
+    });
+
+    html += `<div class="fret-row markers-row" style="grid-template-columns:${cols}"><span></span>`;
+    for (let f = 0; f <= maxFret; f++) {
+      if ([3, 5, 7, 9].includes(f)) html += `<span class="marker-dot"></span>`;
+      else if (f === 12) html += `<span class="marker-pair"><span></span><span></span></span>`;
+      else html += `<span></span>`;
+    }
+    html += `</div>`;
+
+    el.fretboard.innerHTML = html;
+    if (state.inputMode === 'click') {
+      el.fretboard.querySelectorAll('.fret-cell').forEach(cell => cell.addEventListener('click', onCellClick));
+    }
+  }
+
+  function reachablePositions(noteFilter) {
+    const positions = [];
+    STRINGS.forEach((s, si) => {
+      if (!state.stringsEnabled[si]) return;
+      for (let f = 0; f <= state.maxFret; f++) {
+        const noteIdx = (s.open + f) % 12;
+        if (noteFilter === undefined || noteIdx === noteFilter) positions.push({ string: si, fret: f, note: noteIdx });
+      }
+    });
+    return positions;
+  }
+
+  function pickNotePool() { return state.naturalOnly ? NATURAL_INDICES : [...Array(12).keys()]; }
+
+  // ---------- challenge generation ----------
+  function generateChallenge() {
+    if (state.stringsEnabled.every(v => !v)) {
+      el.lcdLabel.textContent = '请至少启用一根弦';
+      el.lcdChallenge.innerHTML = '<span class="lcd-note">–</span>';
+      state.challenge = null;
+      return;
+    }
+
+    const pool = pickNotePool();
+    let attempts = 0, challenge = null;
+
+    while (attempts < 200) {
+      attempts++;
+      if (state.mode === 'note') {
+        const note = pool[Math.floor(Math.random() * pool.length)];
+        if (reachablePositions(note).length > 0) { challenge = { type: 'note', note }; break; }
+      } else {
+        const enabledIntervals = INTERVALS.filter((_, i) => state.intervalsEnabled[i]);
+        if (enabledIntervals.length === 0) break;
+        const root = pool[Math.floor(Math.random() * pool.length)];
+        const iv = enabledIntervals[Math.floor(Math.random() * enabledIntervals.length)];
+        const note = (root + iv.semitones) % 12;
+        if (reachablePositions(note).length > 0) { challenge = { type: 'interval', root, interval: iv, note }; break; }
+      }
+    }
+
+    state.challenge = challenge;
+    state.startTime = performance.now();
+    state.missedThisRound = false;
+    state.revealedThisRound = false;
+    state.confirmedThisRound = false;
+    state.matchNoteIndex = null;
+    clearCellStates();
+    renderChallenge();
+    setFeedback('', '');
+  }
+
+  function renderChallenge() {
+    if (!state.challenge) return;
+    if (state.challenge.type === 'note') {
+      el.lcdLabel.textContent = '找到这个音';
+      el.lcdChallenge.innerHTML = `<span class="lcd-note">${NOTE_NAMES[state.challenge.note]}</span>`;
+    } else {
+      el.lcdLabel.textContent = '找到目标音';
+      el.lcdChallenge.innerHTML =
+        `<span class="lcd-note">${NOTE_NAMES[state.challenge.root]}</span>` +
+        `<span class="lcd-op">的</span>` +
+        `<span class="lcd-interval">${state.challenge.interval.name}</span>`;
+    }
+  }
+
+  function clearCellStates() {
+    el.fretboard.querySelectorAll('.fret-cell').forEach(c => c.classList.remove('correct', 'wrong', 'reveal-ring'));
+  }
+
+  function setFeedback(text, kind) {
+    el.lcdFeedback.textContent = text;
+    el.lcdFeedback.classList.remove('good', 'bad');
+    if (kind) el.lcdFeedback.classList.add(kind);
+  }
+
+  function markCorrect(revealMatches) {
+    if (revealMatches) {
+      reachablePositions(state.challenge.note).forEach(pos => {
+        const cell = el.fretboard.querySelector(`.fret-cell[data-string="${pos.string}"][data-fret="${pos.fret}"]`);
+        if (cell) cell.classList.add('correct');
+      });
+    }
+    const timeMs = performance.now() - state.startTime;
+    state.total++;
+    if (!state.revealedThisRound) {
+      state.correct++;
+      if (!state.missedThisRound) {
+        state.streak++;
+        state.best = Math.max(state.best, state.streak);
+        state.reactionTimes.push(timeMs);
+        if (state.reactionTimes.length > 30) state.reactionTimes.shift();
+      } else {
+        state.streak = 0;
+      }
+      setFeedback('对了', 'good');
+    } else {
+      setFeedback('已提示，未计入连对', '');
+    }
+    updateStats();
+    state.confirmedThisRound = true;
+    setTimeout(generateChallenge, 700);
+  }
+
+  function updateStats() {
+    el.statStreak.textContent = state.streak;
+    el.statBest.textContent = state.best;
+    el.statAccuracy.textContent = state.total > 0 ? Math.round((state.correct / state.total) * 100) + '%' : '–';
+    if (state.reactionTimes.length > 0) {
+      const avg = state.reactionTimes.reduce((a, b) => a + b, 0) / state.reactionTimes.length;
+      el.statAvg.textContent = (avg / 1000).toFixed(1) + 's';
+    } else {
+      el.statAvg.textContent = '–';
+    }
+  }
+
+  function resetStats() {
+    state.streak = 0; state.best = 0; state.correct = 0; state.total = 0; state.reactionTimes = [];
+    updateStats();
+  }
+
+  // ---------- click input mode ----------
+  function onCellClick(e) {
+    if (!state.challenge || state.inputMode !== 'click' || state.confirmedThisRound) return;
+    const cell = e.currentTarget;
+    const note = Number(cell.dataset.note);
+    if (note === state.challenge.note) {
+      cell.classList.add('correct');
+      markCorrect(false);
+    } else {
+      cell.classList.add('wrong');
+      state.missedThisRound = true;
+      state.streak = 0;
+      updateStats();
+      setFeedback('再试试', 'bad');
+      setTimeout(() => cell.classList.remove('wrong'), 300);
+    }
+  }
+
+  // ---------- pitch detection ----------
+  function detectPitch(buffer, sampleRate) {
+    const SIZE = buffer.length;
+    let rms = 0;
+    for (let i = 0; i < SIZE; i++) rms += buffer[i] * buffer[i];
+    rms = Math.sqrt(rms / SIZE);
+    if (rms < RMS_THRESHOLD) return { freq: null, rms };
+
+    const minLag = Math.floor(sampleRate / MAX_FREQ);
+    const maxLag = Math.min(SIZE - 2, Math.ceil(sampleRate / MIN_FREQ));
+
+    const corr = new Float32Array(maxLag + 2);
+    for (let lag = minLag; lag <= maxLag + 1; lag++) {
+      let sum = 0;
+      const n = SIZE - lag;
+      for (let i = 0; i < n; i++) sum += buffer[i] * buffer[i + lag];
+      corr[lag] = sum / n;
+    }
+
+    let bestLag = -1, bestCorr = -Infinity;
+    for (let lag = minLag; lag <= maxLag; lag++) {
+      if (corr[lag] > bestCorr) { bestCorr = corr[lag]; bestLag = lag; }
+    }
+    if (bestLag <= minLag || bestCorr <= 0) return { freq: null, rms };
+
+    const x1 = corr[bestLag - 1] || 0, x2 = corr[bestLag], x3 = corr[bestLag + 1] || 0;
+    const denom = (x1 - 2 * x2 + x3);
+    let refinedLag = bestLag;
+    if (denom !== 0) refinedLag = bestLag + 0.5 * (x1 - x3) / denom;
+
+    return { freq: sampleRate / refinedLag, rms };
+  }
+
+  function freqToNoteInfo(freq) {
+    const midi = 69 + 12 * Math.log2(freq / 440);
+    const rounded = Math.round(midi);
+    const cents = Math.round((midi - rounded) * 100);
+    const noteIndex = ((rounded % 12) + 12) % 12;
+    const octave = Math.floor(rounded / 12) - 1;
+    return { noteIndex, octave, cents };
+  }
+
+  function analysisTick(ts) {
+    if (!state.listening) return;
+    rafId = requestAnimationFrame(analysisTick);
+    if (ts - lastAnalysisAt < ANALYSIS_INTERVAL_MS) return;
+    lastAnalysisAt = ts;
+
+    analyser.getFloatTimeDomainData(timeData);
+    const { freq, rms } = detectPitch(timeData, audioCtx.sampleRate);
+    el.levelFill.style.width = Math.min(100, Math.round(rms * 400)) + '%';
+
+    if (!freq) {
+      el.liveNote.textContent = '–';
+      el.livePitch.classList.remove('matched');
+      el.centsMarker.style.left = '50%';
+      el.centsMarker.classList.remove('in-tune');
+      state.matchNoteIndex = null;
+      return;
+    }
+
+    const info = freqToNoteInfo(freq);
+    el.liveNote.textContent = `${NOTE_NAMES[info.noteIndex]}${info.octave}`;
+    const pct = 50 + Math.max(-50, Math.min(50, info.cents));
+    el.centsMarker.style.left = pct + '%';
+    el.centsMarker.classList.toggle('in-tune', Math.abs(info.cents) <= 10);
+
+    const isTarget = state.challenge && info.noteIndex === state.challenge.note;
+    el.livePitch.classList.toggle('matched', !!isTarget);
+
+    if (!state.challenge || state.confirmedThisRound) return;
+
+    if (info.noteIndex !== state.matchNoteIndex) {
+      state.matchNoteIndex = info.noteIndex;
+      state.matchStartTime = performance.now();
+      return;
+    }
+    if (isTarget && performance.now() - state.matchStartTime >= HOLD_MS) {
+      markCorrect(true);
+    }
+  }
+
+  async function startListening() {
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    } catch (err) {
+      el.micStatus.textContent = '无法访问麦克风，已切换到点击作答模式。可以检查一下浏览器的麦克风权限设置。';
+      el.micStatus.classList.add('error');
+      setInputMode('click');
+      return;
+    }
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioCtx.createMediaStreamSource(micStream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 4096;
+    timeData = new Float32Array(analyser.fftSize);
+    source.connect(analyser);
+
+    state.listening = true;
+    lastAnalysisAt = 0;
+    el.micToggle.classList.add('listening');
+    el.micToggleLabel.textContent = '正在监听 · 点击停止';
+    el.micStatus.textContent = '';
+    el.micStatus.classList.remove('error');
+    rafId = requestAnimationFrame(analysisTick);
+  }
+
+  function stopListening() {
+    state.listening = false;
+    if (rafId) cancelAnimationFrame(rafId);
+    if (micStream) micStream.getTracks().forEach(t => t.stop());
+    if (audioCtx) audioCtx.close();
+    audioCtx = null; analyser = null; micStream = null;
+    el.micToggle.classList.remove('listening');
+    el.micToggleLabel.textContent = '开始跟弹（需要麦克风权限）';
+    el.levelFill.style.width = '0%';
+    el.liveNote.textContent = '–';
+    el.livePitch.classList.remove('matched');
+    el.centsMarker.style.left = '50%';
+    el.centsMarker.classList.remove('in-tune');
+  }
+
+  el.micToggle.addEventListener('click', () => { state.listening ? stopListening() : startListening(); });
+
+  // ---------- mode / input switches ----------
+  function setInputMode(mode) {
+    state.inputMode = mode;
+    el.inputMic.classList.toggle('active', mode === 'mic');
+    el.inputMic.setAttribute('aria-selected', mode === 'mic');
+    el.inputClick.classList.toggle('active', mode === 'click');
+    el.inputClick.setAttribute('aria-selected', mode === 'click');
+    el.micControl.style.display = mode === 'mic' ? 'flex' : 'none';
+    el.fretboardHeading.textContent = mode === 'mic'
+      ? '参考指板（弹对后会亮起所有可能的位置）'
+      : '点这里作答（点中任意一个正确位置即可）';
+    if (mode === 'click' && state.listening) stopListening();
+    renderFretboard();
+  }
+
+  el.inputMic.addEventListener('click', () => setInputMode('mic'));
+  el.inputClick.addEventListener('click', () => setInputMode('click'));
+
+  el.modeNote.addEventListener('click', () => {
+    state.mode = 'note';
+    el.modeNote.classList.add('active'); el.modeNote.setAttribute('aria-selected', 'true');
+    el.modeInterval.classList.remove('active'); el.modeInterval.setAttribute('aria-selected', 'false');
+    el.intervalSettings.style.display = 'none';
+    generateChallenge();
+  });
+
+  el.modeInterval.addEventListener('click', () => {
+    state.mode = 'interval';
+    el.modeInterval.classList.add('active'); el.modeInterval.setAttribute('aria-selected', 'true');
+    el.modeNote.classList.remove('active'); el.modeNote.setAttribute('aria-selected', 'false');
+    el.intervalSettings.style.display = 'flex';
+    generateChallenge();
+  });
+
+  el.fretRange.addEventListener('input', () => {
+    state.maxFret = Number(el.fretRange.value);
+    el.fretRangeLabel.textContent = state.maxFret;
+    el.fretRangeValue.textContent = `0–${state.maxFret} 品`;
+    renderFretboard();
+    generateChallenge();
+  });
+
+  el.naturalToggle.addEventListener('click', () => {
+    state.naturalOnly = !state.naturalOnly;
+    el.naturalToggle.classList.toggle('on', state.naturalOnly);
+    el.naturalToggle.textContent = state.naturalOnly ? '开启' : '关闭';
+    generateChallenge();
+  });
+
+  el.btnReveal.addEventListener('click', () => {
+    if (!state.challenge) return;
+    state.revealedThisRound = true;
+    reachablePositions(state.challenge.note).forEach(pos => {
+      const cell = el.fretboard.querySelector(`.fret-cell[data-string="${pos.string}"][data-fret="${pos.fret}"]`);
+      if (cell) cell.classList.add('reveal-ring');
+    });
+    setFeedback('已显示所有位置', '');
+  });
+
+  el.btnSkip.addEventListener('click', generateChallenge);
+  el.btnReset.addEventListener('click', resetStats);
+
+  // ---------- init ----------
+  buildStringToggles();
+  buildIntervalToggles();
+  setInputMode('mic');
+  renderFretboard();
+  updateStats();
+  generateChallenge();
+})();
+</script>
+</body>
+</html>
