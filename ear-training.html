@@ -307,10 +307,17 @@
     const osc = audioCtx.createOscillator();
     const filter = audioCtx.createBiquadFilter();
     const gain = audioCtx.createGain();
+    const freq = midiToFreq(midi);
     osc.type = 'triangle';
-    osc.frequency.value = midiToFreq(midi);
+    osc.frequency.value = freq;
     filter.type = 'lowpass';
-    filter.frequency.value = 900;
+    // A fixed cutoff strips a very different number of harmonics off a low
+    // note than off one an octave higher, so the two ends of an octave came
+    // out sounding like different timbres instead of "the same note, one
+    // register up" -- exactly the cue that makes an octave recognizable.
+    // Scaling the cutoff to each note's own pitch keeps harmonic content
+    // (and therefore timbre) consistent across the whole register.
+    filter.frequency.value = Math.min(3200, Math.max(500, freq * 8));
     filter.Q.value = 0.7;
 
     gain.gain.setValueAtTime(0.0001, startTime);
