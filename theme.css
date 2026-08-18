@@ -387,15 +387,27 @@ h1 {
 .device-select {
   font-family: var(--font-mono);
   font-size: 13px;
-  background: var(--panel-inset);
+  background-color: var(--panel-inset);
   border: 1px solid var(--line);
   color: var(--text);
   border-radius: 7px;
-  padding: 8px 10px;
+  padding: 8px 34px 8px 12px;
   width: 100%;
   cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  /* Custom chevron replaces the browser's native control chrome, which
+     otherwise renders as a stock light-grey arrow box that clashes with
+     everything else here being custom-styled. #e8b25c is --accent-strong,
+     hardcoded because a data-URI can't reference a CSS custom property. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23e8b25c' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  transition: border-color 0.15s;
 }
 .device-select:hover { border-color: var(--accent); }
+.device-select:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-strong); }
 
 footer { color: var(--text-dim); font-size: 12px; line-height: 1.6; text-align: center; padding-top: 4px; }
 
