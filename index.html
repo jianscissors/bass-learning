@@ -208,6 +208,9 @@
     </div>
 
     <div class="mic-control" id="mic-control">
+      <select class="device-select" id="device-select">
+        <option value="">默认输入设备</option>
+      </select>
       <button class="mic-toggle" id="mic-toggle"><span class="rec-dot"></span><span id="mic-toggle-label">开始跟弹（需要麦克风权限）</span></button>
       <div class="level-meter"><div class="level-meter-fill" id="level-fill"></div></div>
       <div class="mic-status" id="mic-status">页面需要通过 https 或本地服务器打开，麦克风才能使用。</div>
@@ -320,7 +323,7 @@
    'modeNote','modeInterval','inputMic','inputClick','stringToggles','fretRange','fretRangeLabel','fretRangeValue',
    'noteToggles','intervalSettings','intervalToggles','btnReveal','btnSkip','btnReset','micControl','micToggle',
    'micToggleLabel','micStatus','levelFill','livePitch','liveNote','centsMarker','fretboardHeading',
-   'lcdStringTag','stringRuleSwitch','btnClearHistory','historyToday','historyTotal','historyBestStreak','historyAvgReaction','historyList']
+   'lcdStringTag','stringRuleSwitch','btnClearHistory','historyToday','historyTotal','historyBestStreak','historyAvgReaction','historyList','deviceSelect']
    .forEach(key => { el[key] = document.getElementById(key.replace(/([A-Z])/g, m => '-' + m.toLowerCase())); });
 
   // ---------- practice history (persisted in localStorage) ----------
@@ -850,15 +853,48 @@
     }
   }
 
-  async function startListening() {
+  // ---------- input device selection ----------
+  const DEVICE_ID_KEY = 'bassFretboardTrainer_deviceId';
+
+  async function refreshDeviceList() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
     try {
-      micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const inputs = devices.filter(d => d.kind === 'audioinput');
+      const wanted = el.deviceSelect.value || localStorage.getItem(DEVICE_ID_KEY) || '';
+      el.deviceSelect.innerHTML = '<option value="">默认输入设备</option>' +
+        inputs.map(d => `<option value="${d.deviceId}">${d.label || ('输入设备 ' + d.deviceId.slice(0, 6))}</option>`).join('');
+      if (wanted && inputs.some(d => d.deviceId === wanted)) el.deviceSelect.value = wanted;
+    } catch (e) {}
+  }
+
+  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+    navigator.mediaDevices.addEventListener('devicechange', refreshDeviceList);
+  }
+
+  el.deviceSelect.addEventListener('change', () => {
+    localStorage.setItem(DEVICE_ID_KEY, el.deviceSelect.value);
+    if (state.listening) { stopListening(); startListening(); }
+  });
+
+  async function startListening() {
+    // Device labels only come through once permission has been granted at
+    // least once, so a specific audio-interface choice made before that
+    // point falls back to "default" the first time -- refreshDeviceList()
+    // after a successful getUserMedia() call re-populates it with real
+    // labels for next time.
+    const chosenDeviceId = el.deviceSelect.value;
+    const audioConstraints = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+    if (chosenDeviceId) audioConstraints.deviceId = { exact: chosenDeviceId };
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
     } catch (err) {
-      el.micStatus.textContent = '无法访问麦克风，已切换到点击作答模式。可以检查一下浏览器的麦克风权限设置。';
+      el.micStatus.textContent = '无法访问麦克风，已切换到点击作答模式。可以检查一下浏览器的麦克风权限设置，或者换一个输入设备试试。';
       el.micStatus.classList.add('error');
       setInputMode('click');
       return;
     }
+    refreshDeviceList();
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const source = audioCtx.createMediaStreamSource(micStream);
     analyser = audioCtx.createAnalyser();
@@ -970,6 +1006,7 @@
   renderFretboard();
   updateStats();
   renderHistoryList();
+  refreshDeviceList();
   generateChallenge();
 })();
 </script>
