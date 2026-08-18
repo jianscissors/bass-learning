@@ -83,7 +83,6 @@
 
     <div class="controls" style="justify-content:center;">
       <button class="btn primary" id="btn-play">▶ 播放</button>
-      <button class="btn" id="btn-replay">🔁 重播</button>
     </div>
 
     <div class="interval-grid" id="interval-grid"></div>
@@ -96,7 +95,7 @@
     </div>
 
     <div class="controls">
-      <button class="btn" id="btn-skip">跳过，下一题</button>
+      <button class="btn primary" id="btn-skip">下一题</button>
       <button class="btn" id="btn-reset">重置成绩</button>
     </div>
   </div>
@@ -163,11 +162,10 @@
   };
 
   let audioCtx = null;
-  let autoAdvanceTimer = null;
 
   const el = {};
   ['modeSwitch','directionSwitch','rangeLabel','rangeSlider','lcdLabel','lcdNote','lcdIcon','lcdNotesTag','lcdFeedback',
-   'btnPlay','btnReplay','intervalGrid','statStreak','statBest','statAccuracy','statTotal',
+   'btnPlay','intervalGrid','statStreak','statBest','statAccuracy','statTotal',
    'btnSkip','btnReset','intervalToggles','btnClearHistory','historyToday','historyTotal',
    'historyBestStreak','historyAccuracy','historyList']
    .forEach(key => { el[key] = document.getElementById(key.replace(/([A-Z])/g, m => '-' + m.toLowerCase())); });
@@ -341,7 +339,6 @@
 
   // ---------- challenge ----------
   function generateChallenge() {
-    if (autoAdvanceTimer) { clearTimeout(autoAdvanceTimer); autoAdvanceTimer = null; }
     const enabled = INTERVALS.filter((_, i) => state.intervalsEnabled[i]);
     if (enabled.length === 0) {
       state.challenge = null;
@@ -417,7 +414,8 @@
     }
     logAnswer(isCorrect);
     updateStats();
-    autoAdvanceTimer = setTimeout(generateChallenge, 2800);
+    // No auto-advance: the player reads the reveal at their own pace and
+    // clicks "下一题" when ready, rather than a timer deciding for them.
   }
 
   function updateStats() {
@@ -434,7 +432,6 @@
 
   // ---------- controls ----------
   el.btnPlay.addEventListener('click', () => { ensureAudio(); playChallenge(); });
-  el.btnReplay.addEventListener('click', () => { ensureAudio(); playChallenge(); });
   el.btnSkip.addEventListener('click', generateChallenge);
   el.btnReset.addEventListener('click', resetStats);
 
