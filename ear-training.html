@@ -304,30 +304,51 @@
   }
 
   function playTone(midi, startTime, duration) {
-    const osc = audioCtx.createOscillator();
-    const filter = audioCtx.createBiquadFilter();
-    const gain = audioCtx.createGain();
     const freq = midiToFreq(midi);
-    osc.type = 'triangle';
-    osc.frequency.value = freq;
+
+    // A plucked bass note isn't a flat tone held at one volume and one
+    // brightness -- it's a fast pluck transient that immediately starts
+    // decaying, both in level and in harmonic content (the brightness of
+    // the attack fades faster than the fundamental does). Sawtooth+triangle
+    // approximates the electric bass's harmonic richness better than a
+    // single triangle did; the filter envelope opening bright at the pluck
+    // and settling darker is what gives it a "plucked" character instead
+    // of a synth-pad hum.
+    const osc1 = audioCtx.createOscillator();
+    osc1.type = 'sawtooth';
+    osc1.frequency.value = freq;
+    const osc2 = audioCtx.createOscillator();
+    osc2.type = 'triangle';
+    osc2.frequency.value = freq;
+
+    const osc1Gain = audioCtx.createGain();
+    osc1Gain.gain.value = 0.55;
+    const osc2Gain = audioCtx.createGain();
+    osc2Gain.gain.value = 0.45;
+
+    const filter = audioCtx.createBiquadFilter();
     filter.type = 'lowpass';
-    // A fixed cutoff strips a very different number of harmonics off a low
-    // note than off one an octave higher, so the two ends of an octave came
-    // out sounding like different timbres instead of "the same note, one
-    // register up" -- exactly the cue that makes an octave recognizable.
-    // Scaling the cutoff to each note's own pitch keeps harmonic content
-    // (and therefore timbre) consistent across the whole register.
-    filter.frequency.value = Math.min(3200, Math.max(500, freq * 8));
-    filter.Q.value = 0.7;
+    filter.Q.value = 1;
+    // Cutoffs scale with the note's own pitch for the same reason noted
+    // above: consistent relative harmonic content across the register.
+    const brightCutoff = Math.min(4500, freq * 16);
+    const darkCutoff = Math.min(1500, freq * 5);
+    filter.frequency.setValueAtTime(brightCutoff, startTime);
+    filter.frequency.exponentialRampToValueAtTime(darkCutoff, startTime + duration * 0.9);
 
-    gain.gain.setValueAtTime(0.0001, startTime);
-    gain.gain.exponentialRampToValueAtTime(0.5, startTime + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.3, startTime + duration * 0.6);
-    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    const amp = audioCtx.createGain();
+    amp.gain.setValueAtTime(0.0001, startTime);
+    amp.gain.exponentialRampToValueAtTime(0.55, startTime + 0.008);
+    amp.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
 
-    osc.connect(filter).connect(gain).connect(audioCtx.destination);
-    osc.start(startTime);
-    osc.stop(startTime + duration + 0.02);
+    osc1.connect(osc1Gain).connect(filter);
+    osc2.connect(osc2Gain).connect(filter);
+    filter.connect(amp).connect(audioCtx.destination);
+
+    osc1.start(startTime);
+    osc2.start(startTime);
+    osc1.stop(startTime + duration + 0.05);
+    osc2.stop(startTime + duration + 0.05);
   }
 
   function playChallenge() {
