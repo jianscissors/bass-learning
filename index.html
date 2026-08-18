@@ -211,6 +211,10 @@
       <select class="device-select" id="device-select">
         <option value="">默认输入设备</option>
       </select>
+      <div class="row-switches">
+        <span class="settings-label" style="margin:0;">耳机监听（外放会啸叫，只在戴耳机时开）</span>
+        <span class="pill" id="monitor-toggle">关闭</span>
+      </div>
       <button class="mic-toggle" id="mic-toggle"><span class="rec-dot"></span><span id="mic-toggle-label">开始跟弹（需要麦克风权限）</span></button>
       <div class="level-meter"><div class="level-meter-fill" id="level-fill"></div></div>
       <div class="mic-status" id="mic-status">页面需要通过 https 或本地服务器打开，麦克风才能使用。</div>
@@ -314,16 +318,17 @@
     lastSoundAt: 0,
     prevRms: 0,
     awaitingAttack: true,
+    monitoring: false,
   };
 
-  let audioCtx = null, analyser = null, micStream = null, timeData = null, rafId = null, lastAnalysisAt = 0;
+  let audioCtx = null, analyser = null, micStream = null, timeData = null, rafId = null, lastAnalysisAt = 0, monitorGain = null;
 
   const el = {};
   ['fretboard','lcdLabel','lcdChallenge','lcdFeedback','statStreak','statBest','statAccuracy','statAvg',
    'modeNote','modeInterval','inputMic','inputClick','stringToggles','fretRange','fretRangeLabel','fretRangeValue',
    'noteToggles','intervalSettings','intervalToggles','btnReveal','btnSkip','btnReset','micControl','micToggle',
    'micToggleLabel','micStatus','levelFill','livePitch','liveNote','centsMarker','fretboardHeading',
-   'lcdStringTag','stringRuleSwitch','btnClearHistory','historyToday','historyTotal','historyBestStreak','historyAvgReaction','historyList','deviceSelect']
+   'lcdStringTag','stringRuleSwitch','btnClearHistory','historyToday','historyTotal','historyBestStreak','historyAvgReaction','historyList','deviceSelect','monitorToggle']
    .forEach(key => { el[key] = document.getElementById(key.replace(/([A-Z])/g, m => '-' + m.toLowerCase())); });
 
   // ---------- practice history (persisted in localStorage) ----------
@@ -877,6 +882,13 @@
     if (state.listening) { stopListening(); startListening(); }
   });
 
+  el.monitorToggle.addEventListener('click', () => {
+    state.monitoring = !state.monitoring;
+    el.monitorToggle.classList.toggle('on', state.monitoring);
+    el.monitorToggle.textContent = state.monitoring ? '开启' : '关闭';
+    if (monitorGain) monitorGain.gain.value = state.monitoring ? 0.8 : 0;
+  });
+
   async function startListening() {
     // Device labels only come through once permission has been granted at
     // least once, so a specific audio-interface choice made before that
@@ -902,6 +914,11 @@
     timeData = new Float32Array(analyser.fftSize);
     source.connect(analyser);
 
+    monitorGain = audioCtx.createGain();
+    monitorGain.gain.value = state.monitoring ? 0.8 : 0;
+    source.connect(monitorGain);
+    monitorGain.connect(audioCtx.destination);
+
     state.listening = true;
     state.prevRms = 0;
     state.awaitingAttack = true;
@@ -918,7 +935,7 @@
     if (rafId) cancelAnimationFrame(rafId);
     if (micStream) micStream.getTracks().forEach(t => t.stop());
     if (audioCtx) audioCtx.close();
-    audioCtx = null; analyser = null; micStream = null;
+    audioCtx = null; analyser = null; micStream = null; monitorGain = null;
     el.micToggle.classList.remove('listening');
     el.micToggleLabel.textContent = '开始跟弹（需要麦克风权限）';
     el.levelFill.style.width = '0%';
