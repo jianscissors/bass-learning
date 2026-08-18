@@ -334,12 +334,22 @@
     const brightCutoff = Math.min(4500, freq * 16);
     const darkCutoff = Math.min(1500, freq * 5);
     filter.frequency.setValueAtTime(brightCutoff, startTime);
-    filter.frequency.exponentialRampToValueAtTime(darkCutoff, startTime + duration * 0.9);
+    // setTargetAtTime approaches darkCutoff asymptotically rather than
+    // forcing the ramp to land exactly on it by a fixed time -- a plain
+    // exponentialRampToValueAtTime across the note's short duration was
+    // front-loading almost the whole sweep into the first fraction of a
+    // second, closing the tone down far faster than a real pluck decays.
+    filter.frequency.setTargetAtTime(darkCutoff, startTime, duration * 0.3);
 
     const amp = audioCtx.createGain();
     amp.gain.setValueAtTime(0.0001, startTime);
     amp.gain.exponentialRampToValueAtTime(0.55, startTime + 0.008);
-    amp.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    // Same reasoning for loudness: setTargetAtTime keeps the note audible
+    // through most of its ring-out instead of collapsing to silence almost
+    // immediately, and the short ramp right at the end just guarantees a
+    // click-free cutoff when the oscillators stop.
+    amp.gain.setTargetAtTime(0.0001, startTime + 0.008, duration * 0.4);
+    amp.gain.exponentialRampToValueAtTime(0.0001, startTime + duration + 0.04);
 
     osc1.connect(osc1Gain).connect(filter);
     osc2.connect(osc2Gain).connect(filter);
