@@ -916,6 +916,16 @@
 
     monitorGain = audioCtx.createGain();
     monitorGain.gain.value = state.monitoring ? 0.8 : 0;
+    // Interfaces with two combo inputs often report a 2-channel stream even
+    // when only input 1 is plugged in, leaving channel 2 silent -- played
+    // straight through, that's audible in one ear only. Forcing a downmix
+    // to mono here (then letting it upmix back to stereo at the
+    // destination, which duplicates a mono signal to both channels by
+    // spec) puts the same signal in both ears regardless of which physical
+    // input the bass is actually plugged into.
+    monitorGain.channelCount = 1;
+    monitorGain.channelCountMode = 'explicit';
+    monitorGain.channelInterpretation = 'speakers';
     source.connect(monitorGain);
     monitorGain.connect(audioCtx.destination);
 
