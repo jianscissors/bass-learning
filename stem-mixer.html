@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>贝斯分轨播放器 · 音轨混音辅助</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+  .stem-inputs { display: flex; flex-direction: column; gap: 10px; }
+  .stem-input-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .stem-input-row .stem-tag {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--accent-strong);
+    background: rgba(215, 154, 61, 0.12);
+    border: 1px solid var(--accent);
+    border-radius: 20px;
+    padding: 4px 12px;
+    min-width: 52px;
+    text-align: center;
+  }
+  .stem-input-row input[type="file"] {
+    flex: 1;
+    min-width: 180px;
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .stem-input-row input[type="file"]::file-selector-button {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin-right: 10px;
+    cursor: pointer;
+  }
+
+  .mixer-tracks { display: flex; flex-direction: column; gap: 14px; }
+  .track-row { display: flex; align-items: center; gap: 12px; }
+  .track-row .track-label {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text);
+    min-width: 44px;
+  }
+  .track-row .range-row { flex: 1; }
+  .track-row .track-pct {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    min-width: 38px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .transport { display: flex; align-items: center; gap: 14px; }
+  .transport .range-row { flex: 1; }
+  .time-display {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .loop-status {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: center;
+  }
+  .loop-status.active { color: var(--good); }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="eyebrow">贝斯练习工具</div>
+    <h1>贝斯分轨播放器</h1>
+    <p class="subtitle">加载已经分离好的音轨（鼓/贝斯/人声/其他），贝斯调大、其他调小，专心听贝斯在弹什么——省得在一整段混音里费劲把贝斯从其他乐器里挑出来。</p>
+    <nav class="tool-nav">
+      <a href="index.html">🎸 指板速认</a>
+      <a href="rhythm.html">🥁 节奏跟弹</a>
+      <a href="ear-training.html">🎧 音程耳音</a>
+      <a href="stem-mixer.html" class="current">🎚️ 分轨播放</a>
+    </nav>
+  </header>
+
+  <div class="panel">
+    <div class="settings-row">
+      <div class="settings-label">加载音轨（wav / mp3 都行，四个不用都选，至少选一个）</div>
+      <div class="stem-inputs">
+        <div class="stem-input-row"><span class="stem-tag">鼓</span><input type="file" id="file-drums" accept="audio/*"></div>
+        <div class="stem-input-row"><span class="stem-tag">贝斯</span><input type="file" id="file-bass" accept="audio/*"></div>
+        <div class="stem-input-row"><span class="stem-tag">人声</span><input type="file" id="file-vocals" accept="audio/*"></div>
+        <div class="stem-input-row"><span class="stem-tag">其他</span><input type="file" id="file-other" accept="audio/*"></div>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn primary" id="btn-load">加载音轨</button>
+    </div>
+    <div class="mic-status" id="load-status"></div>
+  </div>
+
+  <div class="panel" id="player-panel" style="display:none;">
+    <div class="row-switches">
+      <div class="mode-switch" id="preset-switch">
+        <button class="preset-btn active" data-preset="boost">贝斯增强</button>
+        <button class="preset-btn" data-preset="solo">只听贝斯</button>
+        <button class="preset-btn" data-preset="original">原始混音</button>
+      </div>
+    </div>
+
+    <div class="mixer-tracks" id="mixer-tracks"></div>
+
+    <div class="transport">
+      <button class="btn primary" id="btn-play">▶</button>
+      <div class="range-row"><input type="range" id="seek-bar" min="0" max="1000" step="1" value="0"></div>
+      <span class="time-display" id="time-display">0:00 / 0:00</span>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label">播放速度（<span id="speed-label">1.0x</span>，会同时改变音高，不是变速不变调）</div>
+      <div class="range-row"><input type="range" id="speed-range" min="0.5" max="1.5" step="0.05" value="1"></div>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label">循环片段（练一小段riff很好用）</div>
+      <div class="controls">
+        <button class="btn" id="btn-loop-start">设为起点</button>
+        <button class="btn" id="btn-loop-end">设为终点</button>
+        <button class="btn" id="btn-loop-toggle">开启循环</button>
+        <button class="btn" id="btn-loop-clear">清除循环</button>
+      </div>
+      <div class="loop-status" id="loop-status">未设置循环片段</div>
+    </div>
+  </div>
+
+  <footer>提示：音轨文件在你自己浏览器里播放、混音，不会上传到任何地方。分离音轨（把一首歌拆成鼓/贝斯/人声/其他）需要用 demucs 在本地跑，这一步现在还是手动来——把歌的链接或文件发给我，我帮你分离好之后，把生成的几个文件拖进这个页面就能用。</footer>
+</div>
+
+<script>
+(function () {
+  const STEMS = ['drums', 'bass', 'vocals', 'other'];
+  const STEM_LABELS = { drums: '鼓', bass: '贝斯', vocals: '人声', other: '其他' };
+  const PRESETS = {
+    boost: { drums: 0.45, bass: 1.15, vocals: 0.4, other: 0.45 },
+    solo: { drums: 0, bass: 1.2, vocals: 0, other: 0 },
+    original: { drums: 0.85, bass: 0.85, vocals: 0.85, other: 0.85 },
+  };
+
+  const state = {
+    buffers: {},
+    duration: 0,
+    playing: false,
+    offset: 0,
+    startedAt: 0,
+    speed: 1,
+    loopStart: null,
+    loopEnd: null,
+    looping: false,
+    volumes: { ...PRESETS.boost },
+  };
+
+  let audioCtx = null;
+  let sources = {};
+  let gains = {};
+  let rafId = null;
+
+  const el = {};
+  ['loadStatus','playerPanel','presetSwitch','mixerTracks','btnPlay','seekBar','timeDisplay',
+   'speedLabel','speedRange','btnLoopStart','btnLoopEnd','btnLoopToggle','btnLoopClear','loopStatus']
+   .forEach(key => { el[key] = document.getElementById(key.replace(/([A-Z])/g, m => '-' + m.toLowerCase())); });
+
+  function formatTime(s) {
+    if (!isFinite(s) || s < 0) s = 0;
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${String(sec).padStart(2, '0')}`;
+  }
+
+  // ---------- loading ----------
+  document.getElementById('btn-load').addEventListener('click', async () => {
+    const inputs = {
+      drums: document.getElementById('file-drums'),
+      bass: document.getElementById('file-bass'),
+      vocals: document.getElementById('file-vocals'),
+      other: document.getElementById('file-other'),
+    };
+    const chosen = STEMS.filter(s => inputs[s].files[0]);
+    if (chosen.length === 0) {
+      el.loadStatus.textContent = '至少选一个音轨文件。';
+      el.loadStatus.classList.add('error');
+      return;
+    }
+    el.loadStatus.classList.remove('error');
+    el.loadStatus.textContent = '解码中，大文件可能要几秒……';
+
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    try {
+      for (const stem of chosen) {
+        const file = inputs[stem].files[0];
+        const arrayBuffer = await file.arrayBuffer();
+        state.buffers[stem] = await audioCtx.decodeAudioData(arrayBuffer);
+      }
+    } catch (err) {
+      el.loadStatus.textContent = '解码失败，文件格式可能不支持。';
+      el.loadStatus.classList.add('error');
+      return;
+    }
+
+    state.duration = Math.max(...chosen.map(s => state.buffers[s].duration));
+    state.offset = 0;
+    state.playing = false;
+
+    STEMS.forEach(stem => {
+      if (!state.buffers[stem]) return;
+      if (!gains[stem]) {
+        gains[stem] = audioCtx.createGain();
+        gains[stem].connect(audioCtx.destination);
+      }
+      gains[stem].gain.value = state.volumes[stem];
+    });
+
+    buildMixerUI(chosen);
+    el.loadStatus.textContent = `已加载：${chosen.map(s => STEM_LABELS[s]).join('、')}（时长 ${formatTime(state.duration)}）`;
+    el.playerPanel.style.display = 'flex';
+    updateSeekUI(0);
+  });
+
+  function buildMixerUI(chosen) {
+    el.mixerTracks.innerHTML = '';
+    chosen.forEach(stem => {
+      const row = document.createElement('div');
+      row.className = 'track-row';
+      const pct = Math.round(state.volumes[stem] * 100);
+      row.innerHTML = `
+        <span class="track-label">${STEM_LABELS[stem]}</span>
+        <div class="range-row"><input type="range" min="0" max="150" step="1" value="${pct}" data-stem="${stem}" class="vol-slider"></div>
+        <span class="track-pct" data-stem-pct="${stem}">${pct}%</span>
+      `;
+      el.mixerTracks.appendChild(row);
+    });
+    el.mixerTracks.querySelectorAll('.vol-slider').forEach(slider => {
+      slider.addEventListener('input', () => {
+        const stem = slider.dataset.stem;
+        const val = Number(slider.value) / 100;
+        state.volumes[stem] = val;
+        if (gains[stem]) gains[stem].gain.value = val;
+        el.mixerTracks.querySelector(`[data-stem-pct="${stem}"]`).textContent = slider.value + '%';
+        setActivePreset(null);
+      });
+    });
+  }
+
+  function setActivePreset(name) {
+    el.presetSwitch.querySelectorAll('.preset-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.preset === name);
+    });
+  }
+
+  el.presetSwitch.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const preset = PRESETS[btn.dataset.preset];
+      Object.keys(preset).forEach(stem => {
+        state.volumes[stem] = preset[stem];
+        if (gains[stem]) gains[stem].gain.value = preset[stem];
+        const slider = el.mixerTracks.querySelector(`.vol-slider[data-stem="${stem}"]`);
+        const pctLabel = el.mixerTracks.querySelector(`[data-stem-pct="${stem}"]`);
+        if (slider) { slider.value = Math.round(preset[stem] * 100); }
+        if (pctLabel) { pctLabel.textContent = Math.round(preset[stem] * 100) + '%'; }
+      });
+      setActivePreset(btn.dataset.preset);
+    });
+  });
+
+  // ---------- transport ----------
+  function stopSources() {
+    Object.values(sources).forEach(src => { try { src.stop(); } catch (e) {} src.disconnect(); });
+    sources = {};
+  }
+
+  function playFrom(offset) {
+    stopSources();
+    const when = audioCtx.currentTime + 0.06;
+    Object.keys(state.buffers).forEach(stem => {
+      const src = audioCtx.createBufferSource();
+      src.buffer = state.buffers[stem];
+      src.playbackRate.value = state.speed;
+      if (state.looping && state.loopStart != null && state.loopEnd != null && state.loopEnd > state.loopStart) {
+        src.loop = true;
+        src.loopStart = state.loopStart;
+        src.loopEnd = state.loopEnd;
+      }
+      src.connect(gains[stem]);
+      src.start(when, Math.max(0, offset));
+      sources[stem] = src;
+    });
+    state.startedAt = when;
+    state.offset = offset;
+    state.playing = true;
+    el.btnPlay.textContent = '⏸';
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function pausePlayback() {
+    state.offset = currentPosition();
+    stopSources();
+    state.playing = false;
+    el.btnPlay.textContent = '▶';
+    if (rafId) cancelAnimationFrame(rafId);
+  }
+
+  function currentPosition() {
+    if (!state.playing) return state.offset;
+    let pos = state.offset + (audioCtx.currentTime - state.startedAt) * state.speed;
+    if (state.looping && state.loopStart != null && state.loopEnd != null && state.loopEnd > state.loopStart && pos >= state.loopStart) {
+      const loopLen = state.loopEnd - state.loopStart;
+      pos = state.loopStart + ((pos - state.loopStart) % loopLen);
+    }
+    return pos;
+  }
+
+  function updateSeekUI(pos) {
+    const ratio = state.duration > 0 ? pos / state.duration : 0;
+    el.seekBar.value = Math.round(ratio * 1000);
+    el.timeDisplay.textContent = `${formatTime(pos)} / ${formatTime(state.duration)}`;
+  }
+
+  function tick() {
+    if (!state.playing) return;
+    const pos = currentPosition();
+    if (!state.looping && pos >= state.duration) {
+      pausePlayback();
+      state.offset = 0;
+      updateSeekUI(0);
+      return;
+    }
+    updateSeekUI(pos);
+    rafId = requestAnimationFrame(tick);
+  }
+
+  el.btnPlay.addEventListener('click', () => {
+    if (!audioCtx || Object.keys(state.buffers).length === 0) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (state.playing) pausePlayback();
+    else playFrom(state.offset >= state.duration ? 0 : state.offset);
+  });
+
+  el.seekBar.addEventListener('input', () => {
+    const pos = (Number(el.seekBar.value) / 1000) * state.duration;
+    el.timeDisplay.textContent = `${formatTime(pos)} / ${formatTime(state.duration)}`;
+  });
+  el.seekBar.addEventListener('change', () => {
+    const pos = (Number(el.seekBar.value) / 1000) * state.duration;
+    if (state.playing) playFrom(pos);
+    else state.offset = pos;
+  });
+
+  el.speedRange.addEventListener('input', () => {
+    const newSpeed = Number(el.speedRange.value);
+    el.speedLabel.textContent = newSpeed.toFixed(2) + 'x';
+    if (state.playing) {
+      state.offset = currentPosition();
+      state.startedAt = audioCtx.currentTime;
+      Object.values(sources).forEach(src => { src.playbackRate.value = newSpeed; });
+    }
+    state.speed = newSpeed;
+  });
+
+  // ---------- loop ----------
+  function updateLoopStatus() {
+    if (state.loopStart == null || state.loopEnd == null) {
+      el.loopStatus.textContent = '未设置循环片段';
+      el.loopStatus.classList.remove('active');
+      return;
+    }
+    const active = state.looping ? '（已开启）' : '（已设置，未开启）';
+    el.loopStatus.textContent = `循环片段：${formatTime(state.loopStart)} → ${formatTime(state.loopEnd)} ${active}`;
+    el.loopStatus.classList.toggle('active', state.looping);
+  }
+
+  el.btnLoopStart.addEventListener('click', () => {
+    state.loopStart = currentPosition();
+    updateLoopStatus();
+  });
+  el.btnLoopEnd.addEventListener('click', () => {
+    state.loopEnd = currentPosition();
+    updateLoopStatus();
+  });
+  el.btnLoopToggle.addEventListener('click', () => {
+    if (state.loopStart == null || state.loopEnd == null || state.loopEnd <= state.loopStart) {
+      el.loopStatus.textContent = '先设置起点和终点（终点要晚于起点）';
+      return;
+    }
+    state.looping = !state.looping;
+    el.btnLoopToggle.textContent = state.looping ? '关闭循环' : '开启循环';
+    if (state.playing) playFrom(Math.max(state.loopStart, Math.min(currentPosition(), state.loopEnd)));
+    updateLoopStatus();
+  });
+  el.btnLoopClear.addEventListener('click', () => {
+    state.loopStart = null;
+    state.loopEnd = null;
+    state.looping = false;
+    el.btnLoopToggle.textContent = '开启循环';
+    if (state.playing) playFrom(currentPosition());
+    updateLoopStatus();
+  });
+})();
+</script>
+</body>
+</html>
