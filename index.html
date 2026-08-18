@@ -9,6 +9,31 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="theme.css">
 <style>
+  /* ---- circle of fifths ---- */
+  .circle-wrap { display: flex; justify-content: center; padding: 6px 0 10px; }
+  #fifths-circle { width: 100%; max-width: 300px; height: auto; overflow: visible; }
+  .fifths-ring { fill: none; stroke: var(--line); stroke-width: 1; }
+  .fifths-key { cursor: pointer; }
+  .fifths-key .major-label { font-family: var(--font-display); font-weight: 700; font-size: 14px; fill: var(--text-muted); transition: fill 0.15s; }
+  .fifths-key .minor-label { font-family: var(--font-mono); font-size: 10px; fill: var(--text-dim); transition: fill 0.15s; }
+  .fifths-key:hover .major-label { fill: var(--text); }
+  .fifths-key.selected .major-label { fill: var(--accent-strong); }
+  .fifths-key.selected .minor-label { fill: var(--accent); }
+
+  .key-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--panel-inset);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .key-details-title { font-family: var(--font-display); font-weight: 700; font-size: 16px; color: var(--accent-strong); text-align: center; }
+  .key-details-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .key-details-label { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
+  .mono-notes { font-family: var(--font-mono); font-size: 13px; color: var(--text); letter-spacing: 0.03em; text-align: right; }
+
   .live-pitch {
     display: flex;
     align-items: center;
@@ -263,6 +288,20 @@
     <p class="settings-hint">练习时长在麦克风作答模式下按"正在监听"的时间计，点击作答模式下按页面打开且可见的时间计。记录只存在这台设备的浏览器里，换设备或清浏览器数据不会保留。</p>
   </div>
 
+  <div class="panel">
+    <div class="settings-label">五度圈 · 音阶参考</div>
+    <div class="circle-wrap">
+      <svg id="fifths-circle" viewBox="0 0 280 280" role="img" aria-label="五度圈"></svg>
+    </div>
+    <div class="key-details">
+      <div class="key-details-title" id="key-title">C 大调 / Am 小调</div>
+      <div class="key-details-row"><span class="key-details-label">调号</span><span id="key-signature">无升降号</span></div>
+      <div class="key-details-row"><span class="key-details-label">大调音阶</span><span id="major-scale-notes" class="mono-notes"></span></div>
+      <div class="key-details-row"><span class="key-details-label">关系小调音阶</span><span id="minor-scale-notes" class="mono-notes"></span></div>
+    </div>
+    <p class="settings-hint">点圆环上的调名切换。顺时针升号越来越多，逆时针降号越来越多；外圈是大调，标注的小写字母是它的关系小调。</p>
+  </div>
+
   <footer>提示：顶部「弦位规则」切到单弦轮换或全指板后，题目会亮出该弹哪根弦。安静的房间、离麦克风近一点，识别会更准。</footer>
 </div>
 
@@ -328,7 +367,8 @@
    'modeNote','modeInterval','inputMic','inputClick','stringToggles','fretRange','fretRangeLabel','fretRangeValue',
    'noteToggles','intervalSettings','intervalToggles','btnReveal','btnSkip','btnReset','micControl','micToggle',
    'micToggleLabel','micStatus','levelFill','livePitch','liveNote','centsMarker','fretboardHeading',
-   'lcdStringTag','stringRuleSwitch','btnClearHistory','historyToday','historyTotal','historyBestStreak','historyAvgReaction','historyList','deviceSelect','monitorToggle']
+   'lcdStringTag','stringRuleSwitch','btnClearHistory','historyToday','historyTotal','historyBestStreak','historyAvgReaction','historyList','deviceSelect','monitorToggle',
+   'fifthsCircle','keyTitle','keySignature','majorScaleNotes','minorScaleNotes']
    .forEach(key => { el[key] = document.getElementById(key.replace(/([A-Z])/g, m => '-' + m.toLowerCase())); });
 
   // ---------- practice history (persisted in localStorage) ----------
@@ -1024,6 +1064,118 @@
   el.btnSkip.addEventListener('click', generateChallenge);
   el.btnReset.addEventListener('click', resetStats);
 
+  // ---------- circle of fifths / scale reference ----------
+  const LETTER_ORDER = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+  const LETTER_PITCH = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  const MAJOR_OFFSETS = [0, 2, 4, 5, 7, 9, 11];
+  const FIFTHS = [
+    { major: 'C', minor: 'A' },
+    { major: 'G', minor: 'E' },
+    { major: 'D', minor: 'B' },
+    { major: 'A', minor: 'F♯' },
+    { major: 'E', minor: 'C♯' },
+    { major: 'B', minor: 'G♯' },
+    { major: 'F♯', minor: 'D♯' },
+    { major: 'D♭', minor: 'B♭' },
+    { major: 'A♭', minor: 'F' },
+    { major: 'E♭', minor: 'C' },
+    { major: 'B♭', minor: 'G' },
+    { major: 'F', minor: 'D' },
+  ];
+
+  function noteNameToPitchClass(name) {
+    let pc = LETTER_PITCH[name[0]];
+    for (let i = 1; i < name.length; i++) {
+      if (name[i] === '♯') pc++;
+      else if (name[i] === '♭') pc--;
+    }
+    return ((pc % 12) + 12) % 12;
+  }
+
+  function accidentalStr(n) {
+    if (n === 0) return '';
+    return n > 0 ? '♯'.repeat(n) : '♭'.repeat(-n);
+  }
+
+  // Spells the major scale properly (each of the 7 letters exactly once,
+  // correctly sharped/flatted) rather than just naming pitch classes, which
+  // would produce wrong-looking results like repeating a letter or skipping
+  // one.
+  function majorScaleSpelled(rootName) {
+    const rootPc = noteNameToPitchClass(rootName);
+    const startIdx = LETTER_ORDER.indexOf(rootName[0]);
+    return MAJOR_OFFSETS.map((offset, i) => {
+      const letter = LETTER_ORDER[(startIdx + i) % 7];
+      const naturalPc = LETTER_PITCH[letter];
+      const targetPc = (rootPc + offset) % 12;
+      let diff = targetPc - naturalPc;
+      if (diff > 6) diff -= 12;
+      if (diff < -6) diff += 12;
+      return letter + accidentalStr(diff);
+    });
+  }
+
+  function buildFifthsCircle() {
+    const svg = el.fifthsCircle;
+    const ns = 'http://www.w3.org/2000/svg';
+    const cx = 140, cy = 140, r = 108;
+
+    const ring = document.createElementNS(ns, 'circle');
+    ring.setAttribute('class', 'fifths-ring');
+    ring.setAttribute('cx', cx); ring.setAttribute('cy', cy); ring.setAttribute('r', r);
+    svg.appendChild(ring);
+
+    FIFTHS.forEach((k, i) => {
+      const angleDeg = -90 + i * 30;
+      const rad = angleDeg * Math.PI / 180;
+      const x = cx + r * Math.cos(rad);
+      const y = cy + r * Math.sin(rad);
+
+      const g = document.createElementNS(ns, 'g');
+      g.setAttribute('class', 'fifths-key');
+      g.setAttribute('transform', `translate(${x},${y})`);
+      g.dataset.index = i;
+
+      const majorText = document.createElementNS(ns, 'text');
+      majorText.setAttribute('class', 'major-label');
+      majorText.setAttribute('text-anchor', 'middle');
+      majorText.setAttribute('y', '-4');
+      majorText.textContent = k.major;
+      g.appendChild(majorText);
+
+      const minorText = document.createElementNS(ns, 'text');
+      minorText.setAttribute('class', 'minor-label');
+      minorText.setAttribute('text-anchor', 'middle');
+      minorText.setAttribute('y', '11');
+      minorText.textContent = k.minor + 'm';
+      g.appendChild(minorText);
+
+      g.addEventListener('click', () => selectKey(i));
+      svg.appendChild(g);
+    });
+  }
+
+  function selectKey(i) {
+    el.fifthsCircle.querySelectorAll('.fifths-key').forEach(g => {
+      g.classList.toggle('selected', Number(g.dataset.index) === i);
+    });
+    const k = FIFTHS[i];
+    const majorNotes = majorScaleSpelled(k.major);
+    const minorNotes = majorNotes.slice(5).concat(majorNotes.slice(0, 5));
+    const sharped = majorNotes.filter(n => n.includes('♯'));
+    const flatted = majorNotes.filter(n => n.includes('♭'));
+
+    let sigText;
+    if (sharped.length) sigText = `${sharped.length} 个升号：` + sharped.join(' ');
+    else if (flatted.length) sigText = `${flatted.length} 个降号：` + flatted.join(' ');
+    else sigText = '无升降号';
+
+    el.keyTitle.textContent = `${k.major} 大调 / ${k.minor}m 小调`;
+    el.keySignature.textContent = sigText;
+    el.majorScaleNotes.textContent = majorNotes.join(' ');
+    el.minorScaleNotes.textContent = minorNotes.join(' ');
+  }
+
   // ---------- init ----------
   buildStringToggles();
   buildNoteToggles();
@@ -1034,6 +1186,8 @@
   updateStats();
   renderHistoryList();
   refreshDeviceList();
+  buildFifthsCircle();
+  selectKey(0);
   generateChallenge();
 })();
 </script>
