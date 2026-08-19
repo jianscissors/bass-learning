@@ -25,6 +25,7 @@
   .interval-btn:hover { border-color: var(--accent); color: var(--accent-strong); }
   .interval-btn:active { transform: translateY(1px); }
   .interval-btn:disabled { cursor: default; opacity: 0.5; }
+  .pill.disabled { opacity: 0.35; cursor: default; }
   .interval-btn.correct { background: var(--good); color: #10230a; border-color: var(--good); box-shadow: 0 0 14px var(--good-glow); }
   .interval-btn.wrong { background: var(--bad); color: #2a0e08; border-color: var(--bad); box-shadow: 0 0 14px var(--bad-glow); }
   .interval-btn.reveal { border-color: var(--accent-strong); color: var(--accent-strong); box-shadow: 0 0 10px var(--accent-glow); }
@@ -70,6 +71,21 @@
         <input type="range" id="range-slider" min="28" max="52" value="43" step="1">
       </div>
       <p class="settings-hint">根音会在 E1 到这个上限之间随机选取，音程往上叠加。上限越低，练习的音区越集中在空弦附近；拉高上限可以覆盖到把位更高的低音区。</p>
+    </div>
+
+    <div class="row-switches">
+      <span class="settings-label">自然音程（只出大调音阶里实际会出现的音程）</span>
+      <span class="pill on" id="diatonic-toggle">开启</span>
+    </div>
+    <p class="settings-hint" id="diatonic-hint">大调音阶从主音数出去的音程只有大二/大三/纯四/纯五/大六/大七/八度——小二、小三、三全音、小六、小七这几个不会自然出现，开着这个模式的时候会跳过，下面的音程勾选也会跟着灰掉。</p>
+
+    <div class="row-switches">
+      <span class="settings-label">固定根音（每题都从同一个音开始，只变音程）</span>
+      <span class="pill" id="lock-root-toggle">关闭</span>
+    </div>
+    <div class="settings-row" id="fixed-root-row" style="display:none;">
+      <div class="settings-label">固定的根音</div>
+      <select class="device-select" id="fixed-root-select"></select>
     </div>
 
     <div class="lcd">
@@ -133,14 +149,14 @@
   const MIN_ROOT = 28; // E1
   const INTERVALS = [
     { name: '小二度', semitones: 1, on: false },
-    { name: '大二度', semitones: 2, on: false },
+    { name: '大二度', semitones: 2, on: true },
     { name: '小三度', semitones: 3, on: true },
     { name: '大三度', semitones: 4, on: true },
     { name: '纯四度', semitones: 5, on: true },
     { name: '三全音', semitones: 6, on: false },
     { name: '纯五度', semitones: 7, on: true },
     { name: '小六度', semitones: 8, on: false },
-    { name: '大六度', semitones: 9, on: false },
+    { name: '大六度', semitones: 9, on: true },
     { name: '小七度', semitones: 10, on: true },
     { name: '大七度', semitones: 11, on: true },
     { name: '纯八度', semitones: 12, on: true },
@@ -149,11 +165,24 @@
   function midiToName(m) { return `${NOTE_NAMES[((m % 12) + 12) % 12]}${Math.floor(m / 12) - 1}`; }
   function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
 
+  // Semitone distances that actually occur counting from the tonic up to
+  // another degree of a major scale (2nd through octave). Minor 2nd/3rd/6th/
+  // 7th and the tritone happen *between* various scale degrees, but never
+  // from the tonic itself, so they're not "natural" in that specific sense.
+  const DIATONIC_SEMITONES = new Set([2, 4, 5, 7, 9, 11, 12]);
+
+  function isIntervalUsable(i) {
+    return !state.diatonicOnly || DIATONIC_SEMITONES.has(INTERVALS[i].semitones);
+  }
+
   const state = {
     maxRoot: 43,
     playMode: 'melodic',
     direction: 'random',
     intervalsEnabled: INTERVALS.map(iv => iv.on),
+    diatonicOnly: true,
+    lockRoot: false,
+    fixedRoot: MIN_ROOT,
     challenge: null,
     answered: false,
     streak: 0,
@@ -168,7 +197,8 @@
   ['modeSwitch','directionSwitch','rangeLabel','rangeSlider','lcdLabel','lcdNote','lcdIcon','lcdNotesTag','lcdFeedback',
    'btnPlay','intervalGrid','statStreak','statBest','statAccuracy','statTotal',
    'btnSkip','btnReset','intervalToggles','btnClearHistory','historyToday','historyTotal',
-   'historyBestStreak','historyAccuracy','historyList']
+   'historyBestStreak','historyAccuracy','historyList',
+   'diatonicToggle','lockRootToggle','fixedRootRow','fixedRootSelect']
    .forEach(key => { el[key] = document.getElementById(key.replace(/([A-Z])/g, m => '-' + m.toLowerCase())); });
 
   // ---------- practice history ----------
@@ -270,11 +300,13 @@
   function buildIntervalToggles() {
     el.intervalToggles.innerHTML = '';
     INTERVALS.forEach((iv, i) => {
+      const usable = isIntervalUsable(i);
       const pill = document.createElement('span');
-      pill.className = 'pill' + (state.intervalsEnabled[i] ? ' on' : '');
+      pill.className = 'pill' + (state.intervalsEnabled[i] ? ' on' : '') + (usable ? '' : ' disabled');
       pill.textContent = iv.name;
       pill.addEventListener('click', () => {
-        const enabledCount = state.intervalsEnabled.filter(Boolean).length;
+        if (!isIntervalUsable(i)) return;
+        const enabledCount = state.intervalsEnabled.filter((on, idx) => on && isIntervalUsable(idx)).length;
         if (state.intervalsEnabled[i] && enabledCount === 1) return;
         state.intervalsEnabled[i] = !state.intervalsEnabled[i];
         pill.classList.toggle('on', state.intervalsEnabled[i]);
@@ -288,7 +320,7 @@
   function buildIntervalGrid() {
     el.intervalGrid.innerHTML = '';
     INTERVALS.forEach((iv, i) => {
-      if (!state.intervalsEnabled[i]) return;
+      if (!state.intervalsEnabled[i] || !isIntervalUsable(i)) return;
       const btn = document.createElement('button');
       btn.className = 'interval-btn';
       btn.textContent = iv.name;
@@ -378,15 +410,15 @@
 
   // ---------- challenge ----------
   function generateChallenge() {
-    const enabled = INTERVALS.filter((_, i) => state.intervalsEnabled[i]);
+    const enabled = INTERVALS.filter((_, i) => state.intervalsEnabled[i] && isIntervalUsable(i));
     if (enabled.length === 0) {
       state.challenge = null;
-      el.lcdLabel.textContent = '请至少启用一个音程';
+      el.lcdLabel.textContent = state.diatonicOnly ? '请至少启用一个大调音阶内的音程' : '请至少启用一个音程';
       return;
     }
     const iv = enabled[Math.floor(Math.random() * enabled.length)];
     const ivIndex = INTERVALS.indexOf(iv);
-    const root = MIN_ROOT + Math.floor(Math.random() * (state.maxRoot - MIN_ROOT + 1));
+    const root = state.lockRoot ? state.fixedRoot : (MIN_ROOT + Math.floor(Math.random() * (state.maxRoot - MIN_ROOT + 1)));
     const upper = root + iv.semitones;
     const reversed = state.direction === 'up' ? false
       : state.direction === 'down' ? true
@@ -498,11 +530,49 @@
   el.rangeSlider.addEventListener('input', () => {
     state.maxRoot = Number(el.rangeSlider.value);
     el.rangeLabel.textContent = midiToName(state.maxRoot);
+    buildFixedRootOptions();
     generateChallenge();
+  });
+
+  // ---------- diatonic / fixed-root controls ----------
+  function buildFixedRootOptions() {
+    const prev = state.fixedRoot;
+    el.fixedRootSelect.innerHTML = '';
+    for (let m = MIN_ROOT; m <= state.maxRoot; m++) {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = midiToName(m);
+      el.fixedRootSelect.appendChild(opt);
+    }
+    state.fixedRoot = Math.min(Math.max(prev, MIN_ROOT), state.maxRoot);
+    el.fixedRootSelect.value = state.fixedRoot;
+  }
+
+  el.diatonicToggle.addEventListener('click', () => {
+    state.diatonicOnly = !state.diatonicOnly;
+    el.diatonicToggle.classList.toggle('on', state.diatonicOnly);
+    el.diatonicToggle.textContent = state.diatonicOnly ? '开启' : '关闭';
+    buildIntervalToggles();
+    buildIntervalGrid();
+    generateChallenge();
+  });
+
+  el.lockRootToggle.addEventListener('click', () => {
+    state.lockRoot = !state.lockRoot;
+    el.lockRootToggle.classList.toggle('on', state.lockRoot);
+    el.lockRootToggle.textContent = state.lockRoot ? '开启' : '关闭';
+    el.fixedRootRow.style.display = state.lockRoot ? 'flex' : 'none';
+    generateChallenge();
+  });
+
+  el.fixedRootSelect.addEventListener('change', () => {
+    state.fixedRoot = Number(el.fixedRootSelect.value);
+    if (state.lockRoot) generateChallenge();
   });
 
   // ---------- init ----------
   el.rangeLabel.textContent = midiToName(state.maxRoot);
+  buildFixedRootOptions();
   buildIntervalToggles();
   buildIntervalGrid();
   updateStats();
