@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>练习计划 · 每日打卡</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+  .plan-list { display: flex; flex-direction: column; gap: 10px; }
+  .plan-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .plan-info { display: flex; flex-direction: column; gap: 3px; }
+  .plan-name { font-family: var(--font-display); font-weight: 700; font-size: 14px; color: var(--text); }
+  .plan-meta { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); }
+  .plan-actions { display: flex; align-items: center; gap: 8px; }
+  .plan-actions a.btn { text-decoration: none; }
+  .pill.done { border-color: var(--good); color: var(--good); background: rgba(139, 177, 92, 0.14); box-shadow: 0 0 8px rgba(139, 177, 92, 0.18); }
+
+  .principle-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+  .principle-list li { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+  .today-summary { font-family: var(--font-mono); font-size: 13px; color: var(--text-dim); text-align: center; }
+  .today-summary .n { color: var(--accent-strong); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="eyebrow">贝斯练习工具</div>
+    <h1>练习计划</h1>
+    <p class="subtitle">不同项目的疲劳成本不一样，频率也该不一样——低负担的多来几轮，高负担的（比如扒歌）量跟着当天状态走，别硬凑。这里只是个打卡清单，帮你看清哪天做了什么，不是死规定。</p>
+    <nav class="tool-nav">
+      <a href="index.html">🎸 指板速认</a>
+      <a href="rhythm.html">🥁 节奏跟弹</a>
+      <a href="ear-training.html">🎧 音程耳音</a>
+      <a href="stem-mixer.html">🎚️ 分轨播放</a>
+      <a href="practice-plan.html" class="current">📋 练习计划</a>
+    </nav>
+  </header>
+
+  <div class="panel">
+    <div class="settings-label">今日练习</div>
+    <div class="plan-list" id="plan-list"></div>
+    <div class="today-summary" id="today-summary"></div>
+  </div>
+
+  <div class="panel">
+    <div class="row-switches">
+      <span class="settings-label">最近记录</span>
+      <button class="btn" id="btn-clear-plan-history">清除记录</button>
+    </div>
+    <div class="history-list" id="plan-history-list"></div>
+  </div>
+
+  <div class="panel">
+    <div class="settings-label">练习原则</div>
+    <ul class="principle-list">
+      <li>负担低的项目（音程耳音）尽量塞进日常缝隙，不占整块练习时间，一天来好几轮也没关系</li>
+      <li>负担高的项目（扒歌）别跟别的项目连着做，单独安排、状态好的时候优先做，量跟着当天感觉浮动，别为了凑够数硬撑</li>
+      <li>完整弹一首歌是单独的"耐力"技能，每周 2-3 次就够，不用天天来</li>
+      <li>每周留至少一天不设任务的自由弹奏日，纯粹弹自己喜欢的，别让练琴变成纯粹的任务清单</li>
+      <li>这份清单是起点，不是死规定——哪个项目觉得太累或太轻松，随时调整</li>
+    </ul>
+  </div>
+
+  <footer>提示：这里的打卡只记"今天做没做"，具体练了多少、正确率多少，看各个工具自己的"学习记录"面板更详细。记录只存在这台设备的浏览器里，换设备或清浏览器数据不会保留。</footer>
+</div>
+
+<script>
+(function () {
+  const ITEMS = [
+    { id: 'ear', name: '音程耳音', freq: '随时 · 可多次', link: 'ear-training.html' },
+    { id: 'fretboard', name: '指板速认', freq: '每天 · 5-10分钟', link: 'index.html' },
+    { id: 'rhythm', name: '节奏跟弹', freq: '每天/隔天 · 5-10分钟', link: 'rhythm.html' },
+    { id: 'transcribe', name: '扒歌', freq: '每天 · 量随状态浮动', link: null },
+    { id: 'song', name: '完整弹一首歌', freq: '每周 2-3 次', link: null },
+  ];
+
+  const HISTORY_KEY = 'bassPracticePlan_v1';
+
+  function loadData() {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && parsed.log) return parsed;
+      }
+    } catch (e) {}
+    return { log: {} };
+  }
+  function saveData() { try { localStorage.setItem(HISTORY_KEY, JSON.stringify(data)); } catch (e) {} }
+  let data = loadData();
+
+  function todayKey() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  function todayDone() { return data.log[todayKey()] || []; }
+  function ensureTodayEntry() {
+    const k = todayKey();
+    if (!data.log[k]) data.log[k] = [];
+    return data.log[k];
+  }
+
+  const el = {};
+  ['planList', 'todaySummary', 'planHistoryList', 'btnClearPlanHistory']
+    .forEach(key => { el[key] = document.getElementById(key.replace(/([A-Z])/g, m => '-' + m.toLowerCase())); });
+
+  function renderPlanList() {
+    const done = todayDone();
+    el.planList.innerHTML = '';
+    ITEMS.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'plan-row';
+      const isDone = done.includes(item.id);
+      row.innerHTML = `
+        <div class="plan-info">
+          <span class="plan-name">${item.name}</span>
+          <span class="plan-meta">${item.freq}</span>
+        </div>
+        <div class="plan-actions">
+          ${item.link ? `<a class="btn" href="${item.link}">去练</a>` : ''}
+          <span class="pill${isDone ? ' done' : ''}" data-id="${item.id}">${isDone ? '✓ 今天做了' : '标记完成'}</span>
+        </div>
+      `;
+      row.querySelector('.pill').addEventListener('click', () => {
+        const entry = ensureTodayEntry();
+        const idx = entry.indexOf(item.id);
+        if (idx === -1) entry.push(item.id); else entry.splice(idx, 1);
+        saveData();
+        renderPlanList();
+        renderHistory();
+      });
+      el.planList.appendChild(row);
+    });
+    el.todaySummary.innerHTML = `今天完成 <span class="n">${done.length}</span> / ${ITEMS.length} 项`;
+  }
+
+  function renderHistory() {
+    const keys = Object.keys(data.log).sort().reverse().slice(0, 14).filter(k => data.log[k].length > 0);
+    if (keys.length === 0) {
+      el.planHistoryList.innerHTML = '<div class="history-empty">还没有打卡记录</div>';
+      return;
+    }
+    el.planHistoryList.innerHTML = keys.map(k => {
+      const names = data.log[k].map(id => (ITEMS.find(it => it.id === id) || {}).name || id);
+      const label = k.slice(5).replace('-', '/');
+      return `<div class="history-row">
+        <span class="history-date">${label}</span>
+        <span class="history-metrics"><span>${names.join(' · ')}</span></span>
+      </div>`;
+    }).join('');
+  }
+
+  el.btnClearPlanHistory.addEventListener('click', () => {
+    if (!confirm('确定要清除所有打卡记录吗？这个操作无法撤销。')) return;
+    data = { log: {} };
+    saveData();
+    renderPlanList();
+    renderHistory();
+  });
+
+  renderPlanList();
+  renderHistory();
+})();
+</script>
+</body>
+</html>
