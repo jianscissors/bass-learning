@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>混音与音色笔记</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+  .note-content { display: flex; flex-direction: column; gap: 10px; }
+  .note-content h3 {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: var(--accent-strong);
+    margin: 6px 0 0;
+  }
+  .note-content p { margin: 0; font-size: 13px; line-height: 1.7; color: var(--text-muted); }
+  .note-content ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+  .note-content li { font-size: 13px; line-height: 1.6; color: var(--text-muted); }
+  .note-content strong { color: var(--text); font-weight: 700; }
+  .note-content code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--panel-inset);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: var(--accent-strong);
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="eyebrow">贝斯练习工具</div>
+    <h1>混音与音色笔记</h1>
+    <p class="subtitle">扒歌、录音过程中顺手记下来的音色/混音知识点，不是练习工具，纯参考用。会随着遇到新问题慢慢往这里加。</p>
+    <nav class="tool-nav">
+      <a href="index.html">🎸 指板速认</a>
+      <a href="rhythm.html">🥁 节奏跟弹</a>
+      <a href="ear-training.html">🎧 音程耳音</a>
+      <a href="stem-mixer.html">🎚️ 分轨播放</a>
+      <a href="practice-plan.html">📋 练习计划</a>
+      <a href="mixing-notes.html" class="current">🎛️ 混音笔记</a>
+    </nav>
+  </header>
+
+  <div class="panel">
+    <div class="settings-label">温暖的贝斯音色怎么调</div>
+    <div class="note-content">
+      <h3>乐器/弹奏本身（最根本，插件救不了根子上的问题）</h3>
+      <ul>
+        <li><strong>拾音器选靠近琴颈的（Neck Pickup）</strong>，或者混音里偏向它——离颈越近拾到的高频越少，天然更温暖；靠近琴桥（Bridge）反而明亮、发"叮"</li>
+        <li><strong>手指弹，别用拨片</strong>：手指触弦更柔和，泛音少，拨片音头更 aggressive、更亮</li>
+        <li><strong>右手在指板上方靠近琴颈的位置弹</strong>（不是靠近琴桥），弹弦点越靠近琴颈，音色越圆润</li>
+        <li><strong>音色旋钮（Tone）稍微往回转一点</strong>：削掉一些高频，立刻变暖</li>
+        <li>讲究的话：<strong>平弦（Flatwound）</strong>比圆弦（Roundwound）天生更闷、更温暖，很多爵士/放克贝斯手专门为了这个音色换平弦</li>
+      </ul>
+      <h3>Logic Pro 里调（Bass Amp Designer / EQ）</h3>
+      <ul>
+        <li><strong>Bass Amp Designer</strong>：选偏 "clean"/"vintage" 类的箱头模型（比如 Flip Top、Tweed 类型），别选 overdrive/distortion 类型</li>
+        <li><strong>EQ</strong>：低频（80-150Hz）适当托一点给厚度；中高频（2-5kHz，"presence" 那一段）削一点，这段管"咬字感"/亮度，削了立刻变暖，小心别削太多变闷；高频（8kHz+）轻轻滚降</li>
+        <li><strong>压缩别太狠</strong>：过度压缩会让瞬态变平、听感反而变"硬"，attack 别设太快</li>
+        <li>可以加一点点<strong>磁带/电子管饱和（Saturation）</strong>增加谐波厚度，量要克制</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="settings-label">压缩器（Compressor）是做什么的</div>
+    <div class="note-content">
+      <p>缩小音量的动态范围——把太大声的部分自动压小声一点，让整体音量更平均、不会忽大忽小。</p>
+      <h3>核心参数</h3>
+      <ul>
+        <li><strong>Threshold（阈值）</strong>：音量超过这个值才会被压缩</li>
+        <li><strong>Ratio（压缩比）</strong>：压缩力度，比如 4:1 表示超过阈值的部分每多 4dB，压缩后只多出 1dB</li>
+        <li><strong>Attack（启动时间）</strong>：信号超过阈值后要多久才开始起作用——对贝斯特别关键，见下面"保留动态"</li>
+        <li><strong>Release（释放时间）</strong>：信号回落到阈值以下后多久松开</li>
+        <li><strong>Makeup Gain（增益补偿）</strong>：压缩完整体音量变小，用来补偿拉回来</li>
+      </ul>
+      <h3>为什么贝斯特别需要压缩</h3>
+      <ul>
+        <li>手指拨弦力度天然不均匀，压缩能磨平这种差距，让每个音更一致</li>
+        <li>低频动态范围本身就大，压缩让贝斯在混音里"站得住"，不会忽然冒出来盖过其他乐器又忽然被埋掉</li>
+        <li>能"托住"音符衰减的尾巴，让延音听起来更饱满持续</li>
+      </ul>
+      <h3>怎么压缩又保留动态（不把演奏压"死"）</h3>
+      <ul>
+        <li><strong>比例小一点</strong>：2:1～3:1，只拉一下峰值，不压平整个动态</li>
+        <li><strong>阈值高一点</strong>：只压最突出的几个峰值，大部分正常力度的演奏不受影响</li>
+        <li><strong>Attack 调慢一点</strong>（几毫秒到十几毫秒）：让每个音"起头"的爆发力先原样通过，只压后面的延音部分——这个是最直接的解法</li>
+        <li><strong>并联压缩（Parallel Compression）</strong>：复制一条轨道用狠压缩（比如 8:1）处理出"厚度"，跟原始未压缩的干声混在一起，兼顾冲击力和厚实感，录音室混音常用</li>
+        <li><strong>Makeup Gain 别补太满</strong>：补太多会让轻重音最终响度又被拉近</li>
+      </ul>
+      <p>贝斯的大致起始设置（仅供参考）：Ratio <code>3:1</code> 到 <code>5:1</code>，Attack 稍慢，Release 中等（太快有"泵"的抽气感，太慢音符容易糊在一起）。</p>
+    </div>
+  </div>
+
+  <footer>提示：这些是通用起点，不是标准答案——具体数值还是要边调边用耳朵听，不同的琴、不同的录音环境、不同的歌都不一样。</footer>
+</div>
+
+</body>
+</html>

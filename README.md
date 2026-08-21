@@ -13,12 +13,13 @@
 | 🎧 音程耳音 | [ear-training.html](https://jianscissors.github.io/bass-learning/ear-training.html) | 纯听力练耳，音域限定在贝斯常用的低音区（不是随便找个中央 C 附近糊弄） |
 | 🎚️ 分轨播放 | [stem-mixer.html](https://jianscissors.github.io/bass-learning/stem-mixer.html) | 加载分离好的音轨（鼓/贝斯/人声/其他），贝斯调大其他调小，辅助扒谱听歌 |
 | 📋 练习计划 | [practice-plan.html](https://jianscissors.github.io/bass-learning/practice-plan.html) | 每日打卡清单，不同项目按疲劳成本分配频率（低负担多来、高负担别贪多），带最近记录 |
+| 🎛️ 混音笔记 | [mixing-notes.html](https://jianscissors.github.io/bass-learning/mixing-notes.html) | 音色/混音知识点参考（温暖音色怎么调、压缩器怎么用），纯阅读，不是练习工具 |
 
-每个工具都有独立的"学习记录"面板（练习时长、正确率、连对等），存在浏览器本地，换设备不会同步。
+每个练习工具都有独立的"学习记录"面板（练习时长、正确率、连对等），存在浏览器本地，换设备不会同步。
 
 ## 技术
 
-- 纯 HTML/CSS/JS，无构建步骤，`theme.css` 是五个工具共用的设计系统
+- 纯 HTML/CSS/JS，无构建步骤，`theme.css` 是六个工具共用的设计系统
 - 音高识别用浏览器自带的 Web Audio API（自相关算法），不依赖外部服务
 - 节奏检测用 `ScriptProcessorNode` 做采样级精度的起振检测，和节拍器共用同一个音频时钟
 
