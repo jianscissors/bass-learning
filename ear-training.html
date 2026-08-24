@@ -89,6 +89,7 @@
       <div class="settings-label">固定的根音</div>
       <select class="device-select" id="fixed-root-select"></select>
     </div>
+    <p class="settings-hint" id="lock-root-hint" style="display:none;">开启后点「▶ 播放」会直接换一个新音程接着放，不用先点「下一题」——适合只想反复听、对比记音程感觉，不每次都判断对错的时候用。</p>
 
     <div class="lcd">
       <div class="lcd-label" id="lcd-label">点击播放，听完再猜</div>
@@ -200,7 +201,7 @@
    'btnPlay','intervalGrid','statStreak','statBest','statAccuracy','statTotal',
    'btnSkip','btnReset','intervalToggles','btnClearHistory','historyToday','historyTotal',
    'historyBestStreak','historyAccuracy','historyList',
-   'diatonicToggle','lockRootToggle','fixedRootRow','fixedRootSelect']
+   'diatonicToggle','lockRootToggle','fixedRootRow','fixedRootSelect','lockRootHint']
    .forEach(key => { el[key] = document.getElementById(key.replace(/([A-Z])/g, m => '-' + m.toLowerCase())); });
 
   // ---------- practice history ----------
@@ -494,7 +495,16 @@
   }
 
   // ---------- controls ----------
-  el.btnPlay.addEventListener('click', () => { ensureAudio(); playChallenge(); });
+  el.btnPlay.addEventListener('click', () => {
+    ensureAudio();
+    // With the root locked, "播放" doubles as "next + play" so listening to
+    // a stream of intervals off the same anchor note is a single click
+    // instead of "下一题" then "播放" every time. Without a locked root the
+    // button still just replays the current challenge, since that's needed
+    // for re-listening before guessing.
+    if (state.lockRoot) generateChallenge();
+    else playChallenge();
+  });
   el.btnSkip.addEventListener('click', generateChallenge);
   el.btnReset.addEventListener('click', resetStats);
 
@@ -554,6 +564,7 @@
     el.lockRootToggle.classList.toggle('on', state.lockRoot);
     el.lockRootToggle.textContent = state.lockRoot ? '开启' : '关闭';
     el.fixedRootRow.style.display = state.lockRoot ? 'flex' : 'none';
+    el.lockRootHint.style.display = state.lockRoot ? 'block' : 'none';
     generateChallenge();
   });
 
