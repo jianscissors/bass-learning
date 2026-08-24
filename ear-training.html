@@ -360,7 +360,20 @@
     // Scales with pitch (as elsewhere) so timbre stays consistent across
     // the register, kept modest since triangle needs little help staying
     // clean.
-    filter.frequency.value = Math.min(2200, Math.max(500, freq * 6));
+    // The 500Hz floor was higher than freq*6 for most of this app's actual
+    // register (MIN_ROOT=E1≈41Hz gives freq*6≈247), so it silently
+    // overrode the proportional scaling for exactly the low notes this
+    // tool focuses on. That's the same bug fixed once before in the
+    // fretboard tool's filter, reintroduced here by a floor value that
+    // didn't account for how low this tool's register actually goes: an
+    // octave built on a low root had its cutoff clamped to the *same*
+    // 500Hz for both notes, so the upper note ended up with roughly half
+    // the cutoff-to-fundamental ratio of the lower one -- disproportionately
+    // dull relative to its own pitch, breaking the "same timbre, higher
+    // register" cue that makes an octave read as an octave. Lowering the
+    // floor below what MIN_ROOT ever produces means it no longer clamps
+    // anywhere in this tool's actual range.
+    filter.frequency.value = Math.min(2200, Math.max(150, freq * 6));
 
     const amp = audioCtx.createGain();
     amp.gain.setValueAtTime(0.0001, startTime);
