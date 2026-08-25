@@ -224,6 +224,14 @@
       </div>
     </div>
 
+    <div class="row-switches">
+      <span class="settings-label">升降号显示</span>
+      <div class="mode-switch" role="tablist" aria-label="升降号显示" id="accidental-switch">
+        <button class="accidental-btn active" data-style="sharp" role="tab" aria-selected="true">♯ 升号</button>
+        <button class="accidental-btn" data-style="flat" role="tab" aria-selected="false">♭ 降号</button>
+      </div>
+    </div>
+
     <div class="settings-row">
       <div class="settings-label">练习的音</div>
       <div class="pill-group" id="note-toggles"></div>
@@ -309,7 +317,9 @@
 
 <script>
 (function () {
-  const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  const NOTE_NAMES_SHARP = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  const NOTE_NAMES_FLAT = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'G♭', 'G', 'A♭', 'A', 'B♭', 'B'];
+  function noteNames() { return state.accidentalStyle === 'flat' ? NOTE_NAMES_FLAT : NOTE_NAMES_SHARP; }
   const NATURAL_INDICES = [0, 2, 4, 5, 7, 9, 11];
   const STRINGS = [
     { name: 'G', open: 7, thickness: 1.5 },
@@ -337,6 +347,7 @@
   const state = {
     mode: 'note',
     inputMode: 'mic',
+    accidentalStyle: 'sharp',
     maxFret: 12,
     stringsEnabled: [true, true, true, true],
     notesEnabled: [...Array(12).keys()].map(i => NATURAL_INDICES.includes(i)),
@@ -369,7 +380,7 @@
    'modeNote','modeInterval','inputMic','inputClick','stringToggles','fretRange','fretRangeLabel','fretRangeValue',
    'noteToggles','intervalSettings','intervalToggles','btnReveal','btnSkip','btnReset','micControl','micToggle',
    'micToggleLabel','micStatus','levelFill','livePitch','liveNote','centsMarker','fretboardHeading',
-   'lcdStringTag','stringRuleSwitch','btnClearHistory','historyToday','historyTotal','historyBestStreak','historyAvgReaction','historyList','deviceSelect','monitorToggle',
+   'lcdStringTag','stringRuleSwitch','accidentalSwitch','btnClearHistory','historyToday','historyTotal','historyBestStreak','historyAvgReaction','historyList','deviceSelect','monitorToggle',
    'fifthsCircle','keyTitle','keySignature','majorScaleNotes','minorScaleNotes']
    .forEach(key => { el[key] = document.getElementById(key.replace(/([A-Z])/g, m => '-' + m.toLowerCase())); });
 
@@ -528,7 +539,7 @@
 
   function buildNoteToggles() {
     el.noteToggles.innerHTML = '';
-    NOTE_NAMES.forEach((name, i) => {
+    noteNames().forEach((name, i) => {
       const pill = document.createElement('span');
       pill.className = 'pill' + (state.notesEnabled[i] ? ' on' : '');
       pill.textContent = name;
@@ -687,11 +698,11 @@
     if (!state.challenge) return;
     if (state.challenge.type === 'note') {
       el.lcdLabel.textContent = '找到这个音';
-      el.lcdChallenge.innerHTML = `<span class="lcd-note">${NOTE_NAMES[state.challenge.note]}</span>`;
+      el.lcdChallenge.innerHTML = `<span class="lcd-note">${noteNames()[state.challenge.note]}</span>`;
     } else {
       el.lcdLabel.textContent = '找到目标音';
       el.lcdChallenge.innerHTML =
-        `<span class="lcd-note">${NOTE_NAMES[state.challenge.root]}</span>` +
+        `<span class="lcd-note">${noteNames()[state.challenge.root]}</span>` +
         `<span class="lcd-op">的</span>` +
         `<span class="lcd-interval">${state.challenge.interval.name}</span>`;
     }
@@ -880,7 +891,7 @@
 
     state.lastSoundAt = ts;
     const info = freqToNoteInfo(freq);
-    el.liveNote.textContent = `${NOTE_NAMES[info.noteIndex]}${info.octave}`;
+    el.liveNote.textContent = `${noteNames()[info.noteIndex]}${info.octave}`;
     const pct = 50 + Math.max(-50, Math.min(50, info.cents));
     el.centsMarker.style.left = pct + '%';
     el.centsMarker.classList.toggle('in-tune', Math.abs(info.cents) <= 10);
@@ -1050,6 +1061,18 @@
       });
       refillStringBag();
       generateChallenge();
+    });
+  });
+
+  el.accidentalSwitch.querySelectorAll('.accidental-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.accidentalStyle = btn.dataset.style;
+      el.accidentalSwitch.querySelectorAll('.accidental-btn').forEach(b => {
+        b.classList.toggle('active', b === btn);
+        b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+      });
+      buildNoteToggles();
+      renderChallenge();
     });
   });
 
