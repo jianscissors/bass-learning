@@ -34,6 +34,23 @@
   .lcd-note.good { color: var(--good); text-shadow: 0 0 18px var(--good-glow); }
   .lcd-note.bad { color: var(--bad); text-shadow: 0 0 18px var(--bad-glow); }
   .lcd-notes-tag { font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); letter-spacing: 0.02em; }
+
+  .ref-note-grid { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
+  .ref-note-btn {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--panel-2);
+    color: var(--text-muted);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px 9px;
+    cursor: pointer;
+    transition: border-color 0.1s, color 0.1s, background 0.1s, transform 0.1s;
+  }
+  .ref-note-btn:hover { border-color: var(--accent); color: var(--accent-strong); }
+  .ref-note-btn:active { transform: translateY(1px); }
+  .ref-note-btn.playing { background: var(--accent); color: var(--panel); border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -123,6 +140,14 @@
 
   <div class="panel">
     <div class="settings-row">
+      <div class="settings-label">参考音（点一个单独听听音高，方便跟题目对比）</div>
+      <div class="ref-note-grid" id="ref-note-grid"></div>
+      <p class="settings-hint">音区跟着上面的"根音音区上限"走，覆盖从 E1 到当前设置能出现的最高音。</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="settings-row">
       <div class="settings-label">练习的音程</div>
       <div class="pill-group" id="interval-toggles"></div>
       <p class="settings-hint">默认开启贝斯常用的几个（三度、四度、五度、七度、八度）；二度、三全音、六度这些默认关闭，想加练可以自己点开。</p>
@@ -200,7 +225,7 @@
   const el = {};
   ['modeSwitch','directionSwitch','rangeLabel','rangeSlider','lcdLabel','lcdNote','lcdIcon','lcdNotesTag','lcdFeedback',
    'btnPlay','intervalGrid','statStreak','statBest','statAccuracy','statTotal',
-   'btnSkip','btnReset','intervalToggles','btnClearHistory','historyToday','historyTotal',
+   'btnSkip','btnReset','intervalToggles','refNoteGrid','btnClearHistory','historyToday','historyTotal',
    'historyBestStreak','historyAccuracy','historyList',
    'diatonicToggle','lockRootToggle','fixedRootRow','fixedRootSelect','lockRootHint']
    .forEach(key => { el[key] = document.getElementById(key.replace(/([A-Z])/g, m => '-' + m.toLowerCase())); });
@@ -332,6 +357,27 @@
       btn.addEventListener('click', () => onAnswer(i));
       el.intervalGrid.appendChild(btn);
     });
+  }
+
+  // ---------- reference notes ----------
+  // Covers every semitone a challenge could actually use: roots go up to
+  // state.maxRoot, and the widest interval in the list (octave, 12
+  // semitones) can land on top of that root.
+  function buildReferenceNotes() {
+    el.refNoteGrid.innerHTML = '';
+    const highest = state.maxRoot + 12;
+    for (let m = MIN_ROOT; m <= highest; m++) {
+      const btn = document.createElement('button');
+      btn.className = 'ref-note-btn';
+      btn.textContent = midiToName(m);
+      btn.addEventListener('click', () => {
+        ensureAudio();
+        playTone(m, audioCtx.currentTime + 0.02, 0.6);
+        btn.classList.add('playing');
+        setTimeout(() => btn.classList.remove('playing'), 300);
+      });
+      el.refNoteGrid.appendChild(btn);
+    }
   }
 
   // ---------- audio ----------
@@ -534,6 +580,7 @@
     state.maxRoot = Number(el.rangeSlider.value);
     el.rangeLabel.textContent = midiToName(state.maxRoot);
     buildFixedRootOptions();
+    buildReferenceNotes();
     generateChallenge();
   });
 
@@ -579,6 +626,7 @@
   buildFixedRootOptions();
   buildIntervalToggles();
   buildIntervalGrid();
+  buildReferenceNotes();
   updateStats();
   renderHistoryList();
   generateChallenge();
