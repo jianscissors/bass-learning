@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>曲目练习 · 指板熟悉</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+  .stage-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+  .stage-list li { font-size: 13px; line-height: 1.6; color: var(--text-muted); }
+  .stage-list strong { color: var(--text); font-weight: 700; }
+
+  .song-card { display: flex; flex-direction: column; gap: 10px; }
+  .song-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .song-name { font-family: var(--font-display); font-weight: 700; font-size: 15px; color: var(--text); }
+  .song-meta { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); }
+
+  .song-stage-list { display: flex; flex-direction: column; gap: 8px; }
+  .song-stage-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+  }
+  .song-stage-row .stage-text { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+  .song-stage-row.done .stage-text { color: var(--text-dim); text-decoration: line-through; }
+  .song-stage-row .pill { flex: none; }
+
+  .song-progress { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); text-align: right; }
+  .song-progress .n { color: var(--accent-strong); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="eyebrow">贝斯练习工具</div>
+    <h1>曲目练习</h1>
+    <p class="subtitle">用几首熟悉的爵士标准曲练指板熟悉度和和弦音，比孤立地找音更有用——直接在真实和弦进行里找根音、找 chord tone，跟 backing track 弹。按下面四个阶段推进，每首歌都要走完一遍，全部走完会花不少时间，别急。</p>
+    <nav class="tool-nav">
+      <a href="index.html">🎸 指板速认</a>
+      <a href="rhythm.html">🥁 节奏跟弹</a>
+      <a href="ear-training.html">🎧 音程耳音</a>
+      <a href="stem-mixer.html">🎚️ 分轨播放</a>
+      <a href="practice-plan.html">📋 练习计划</a>
+      <a href="mixing-notes.html">🎛️ 混音笔记</a>
+      <a href="songs.html" class="current">🎵 曲目练习</a>
+    </nav>
+  </header>
+
+  <div class="panel">
+    <div class="settings-label">练习方法（四个阶段，按顺序来）</div>
+    <ol class="stage-list">
+      <li><strong>找根音</strong>：先在指板上找到这首歌调性的根音，以及同一个音在不同把位/不同弦上的位置</li>
+      <li><strong>只弹根音跟弹</strong>：每天挑一首，直接跟 backing track 弹，一开始只弹和弦的根音，把和弦进行的节奏感和落点弹准</li>
+      <li><strong>标注和弦级数</strong>：分析这首歌的和弦走向，把每个和弦标成级数和弦（比如 IImi7 - V7 - Imaj7），而不是死记具体和弦名字</li>
+      <li><strong>加入 chord tone</strong>：等前面都熟练了，在每个和弦上加入 1/3/5/7 这几个 chord tone，跟着 backing track 一拍弹一个音；这一步熟了之后再尝试弹 swing 8th</li>
+    </ol>
+  </div>
+
+  <div id="song-cards"></div>
+
+  <footer>提示：每首歌四个阶段的打卡状态存在这台设备的浏览器里（localStorage），换设备或清浏览器数据不会保留。这里只是个进度清单，不是评分工具——弹得对不对还是靠自己耳朵和节拍器判断。</footer>
+</div>
+
+<script>
+(function () {
+  const SONGS = [
+    { id: 'fly-me-to-the-moon', name: 'Fly Me to the Moon', meta: '常见调 C 大调 / A 小调', youtube: 'https://youtu.be/hst2N9sxY0Q' },
+    { id: 'all-the-things-you-are', name: 'All the Things You Are', meta: '多次转调，练级数和弦思维的好教材', youtube: 'https://youtu.be/epuAz5xF_b4' },
+    { id: 'blue-bossa', name: 'Blue Bossa', meta: 'C 小调，Bossa Nova', youtube: 'https://youtu.be/-Nny0TbhZ5g' },
+    { id: 'girl-from-ipanema', name: 'The Girl from Ipanema', meta: 'F 大调，Bossa Nova', youtube: 'https://youtu.be/iyKYlQd3vBo' },
+  ];
+
+  const STAGES = [
+    '找根音（不同把位/不同弦）',
+    '只弹根音跟 backing track',
+    '标注和弦级数进行',
+    '加入 chord tone (1,3,5,7)，一拍一个音 → swing 8th',
+  ];
+
+  const STORAGE_KEY = 'bassSongPractice_v1';
+
+  function loadData() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && parsed.songs) return parsed;
+      }
+    } catch (e) {}
+    return { songs: {} };
+  }
+  function saveData() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {} }
+  let data = loadData();
+
+  function stagesFor(songId) {
+    if (!data.songs[songId]) data.songs[songId] = STAGES.map(() => false);
+    return data.songs[songId];
+  }
+
+  const container = document.getElementById('song-cards');
+
+  function renderSongs() {
+    container.innerHTML = '';
+    SONGS.forEach(song => {
+      const done = stagesFor(song.id);
+      const doneCount = done.filter(Boolean).length;
+
+      const panel = document.createElement('div');
+      panel.className = 'panel song-card';
+      panel.innerHTML = `
+        <div class="song-head">
+          <span class="song-name">${song.name}</span>
+          <span class="song-meta">${song.meta}</span>
+        </div>
+        <a class="btn" href="${song.youtube}" target="_blank" rel="noopener noreferrer">▶ 打开 YouTube 参考</a>
+        <div class="song-stage-list"></div>
+        <div class="song-progress">完成 <span class="n">${doneCount}</span> / ${STAGES.length} 阶段</div>
+      `;
+
+      const list = panel.querySelector('.song-stage-list');
+      STAGES.forEach((text, i) => {
+        const row = document.createElement('div');
+        row.className = 'song-stage-row' + (done[i] ? ' done' : '');
+        row.innerHTML = `
+          <span class="stage-text">${i + 1}. ${text}</span>
+          <span class="pill${done[i] ? ' on' : ''}">${done[i] ? '✓ 已练熟' : '标记完成'}</span>
+        `;
+        row.addEventListener('click', () => {
+          done[i] = !done[i];
+          saveData();
+          renderSongs();
+        });
+        list.appendChild(row);
+      });
+
+      container.appendChild(panel);
+    });
+  }
+
+  renderSongs();
+})();
+</script>
+</body>
+</html>
