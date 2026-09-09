@@ -553,12 +553,14 @@
   // ---------- controls ----------
   el.btnPlay.addEventListener('click', () => {
     ensureAudio();
-    // With the root locked, "播放" doubles as "next + play" so listening to
-    // a stream of intervals off the same anchor note is a single click
-    // instead of "下一题" then "播放" every time. Without a locked root the
-    // button still just replays the current challenge, since that's needed
-    // for re-listening before guessing.
-    if (state.lockRoot) generateChallenge();
+    // With the root locked, "播放" doubles as "next + play" once the current
+    // challenge has been answered, so listening to a stream of intervals off
+    // the same anchor note is a single click instead of "下一题" then "播放"
+    // every time. Before answering (or with no root lock), the button just
+    // replays the current challenge, since that's needed for re-listening
+    // before guessing -- generating a new one here would let a click on
+    // "播放" skip the question instead of just replaying it.
+    if (state.lockRoot && state.answered) generateChallenge();
     else playChallenge();
   });
   el.btnSkip.addEventListener('click', generateChallenge);
