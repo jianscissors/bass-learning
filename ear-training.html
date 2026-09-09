@@ -423,10 +423,19 @@
     // anywhere in this tool's actual range.
     filter.frequency.value = Math.min(2200, Math.max(150, freq * 6));
 
+    // Attack, then hold at full volume for the whole note, then a short
+    // release at the very end. The previous envelope started decaying
+    // (via setTargetAtTime) immediately after the attack, so the note was
+    // already fading out well before `duration` elapsed -- raising
+    // `duration` only stretched an inaudible tail, not the audible part,
+    // which is why the note kept sounding short no matter how long
+    // `duration` was set to. Holding at full volume until shortly before
+    // the end makes the note's audible length actually track `duration`.
+    const release = 0.15;
     const amp = audioCtx.createGain();
     amp.gain.setValueAtTime(0.0001, startTime);
     amp.gain.exponentialRampToValueAtTime(0.6, startTime + 0.01);
-    amp.gain.setTargetAtTime(0.0001, startTime + 0.01, duration * 0.4);
+    amp.gain.setValueAtTime(0.6, startTime + Math.max(0.01, duration - release));
     amp.gain.exponentialRampToValueAtTime(0.0001, startTime + duration + 0.04);
 
     osc.connect(filter).connect(amp).connect(audioCtx.destination);
