@@ -372,9 +372,9 @@
       btn.textContent = midiToName(m);
       btn.addEventListener('click', () => {
         ensureAudio();
-        playTone(m, audioCtx.currentTime + 0.02, 0.6);
+        playTone(m, audioCtx.currentTime + 0.02, 1.0);
         btn.classList.add('playing');
-        setTimeout(() => btn.classList.remove('playing'), 300);
+        setTimeout(() => btn.classList.remove('playing'), 1000);
       });
       el.refNoteGrid.appendChild(btn);
     }
@@ -440,11 +440,11 @@
     const now = audioCtx.currentTime + 0.05;
     const [a, b] = state.challenge.notes;
     if (state.playMode === 'harmonic') {
-      playTone(a, now, 1.1);
-      playTone(b, now, 1.1);
+      playTone(a, now, 1.6);
+      playTone(b, now, 1.6);
     } else {
-      playTone(a, now, 0.55);
-      playTone(b, now + 0.68, 0.55);
+      playTone(a, now, 0.85);
+      playTone(b, now + 1.05, 0.85);
     }
   }
 
