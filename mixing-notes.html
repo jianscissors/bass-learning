@@ -103,6 +103,65 @@
     </div>
   </div>
 
+  <div class="panel">
+    <div class="settings-label">《Hysteria》贝斯音色全流程（Muse）</div>
+    <div class="note-content">
+      <p>Chris Wolstenholme 那种打铁般的 16 分音符失真贝斯。核心思路：实物贝斯直接加失真会把低频搅浑，所以要把同一段录音复制成三条轨——干净低频地基、失真颗粒、合成器层——分开处理再混合。</p>
+
+      <h3>第一阶段：乐器准备</h3>
+      <ul>
+        <li><strong>调音</strong>：标准 E 弦调音（E-A-D-G）。录音前用 Audio FX → Utilities → Tuner 对准空弦，别只靠耳朵——16分音符高速弹奏对音准要求高，一点跑音会和后面叠的合成器层打架</li>
+        <li><strong>拾音器</strong>：双拾音器（Jazz Bass 类型）前后都开到最大，兼顾低频厚度和中高频颗粒感</li>
+        <li><strong>主动电路 EQ</strong>：Bass 保持中间不变（低频交给干净轨负责，加多了会让失真变浑浊）；Treble 稍微拧大一点（10-20%），多一点金属钢丝音</li>
+      </ul>
+
+      <h3>第二阶段：弹奏手法（这首歌一半的颗粒感来自手，不是插件）</h3>
+      <ul>
+        <li><strong>触弦力道要大</strong>：让琴弦轻微砸到品丝（Fret Clang），这个撞击声是失真最喜欢吃的"燃料"</li>
+        <li><strong>右手靠近琴桥弹</strong>：弦张力更紧，16分音符的颗粒才紧凑，别在靠琴颈的位置弹（那样更适合前面"温暖音色"笔记里的圆润音色，不适合这首歌）</li>
+        <li><strong>左手死音是重点</strong>：不弹的手指必须彻底摁住其他弦闷掉。高速失真会把任何一点多余共振放大成巨大噪音</li>
+      </ul>
+
+      <h3>第三阶段：Logic Pro 三轨路由搭建</h3>
+      <ul>
+        <li>录一条 <code>Bass Clean</code> 轨，录完 <code>Command+T</code> 剪掉前面杂音</li>
+        <li>选中它连按两次 <code>Command+D</code> 复制出两条空轨，分别改名 <code>Bass Fuzz</code>、<code>Bass Synth</code></li>
+        <li>按住 <code>Option</code> 拖拽音频块，把 Clean 轨的内容对齐复制进另外两条轨（三轨内容完全一致，之后分别加工）</li>
+        <li><code>X</code> 呼出混音台，<code>Shift</code> 多选三条轨，Output 统一改到 <code>Bus 1</code>，自动生成的 Aux 轨重命名为 <code>Bass Master</code>（Output 保持 Stereo Out）</li>
+      </ul>
+
+      <h3>第四阶段：各轨插件参数</h3>
+      <p><strong>Bass Clean（地基）</strong></p>
+      <ul>
+        <li>Bass Amp Designer：Model 选 <code>Classic Amp</code>，Cabinet 选 <code>8x10</code>；Bass 拧到 2点钟，Lo Mid 1点钟，Treble 降到 9点钟</li>
+        <li>Compressor：切到 <code>Studio FET</code> 面板；Ratio <code>4:1</code>，Attack 拉到最快 <code>0.1ms</code>，Release <code>50ms</code>，Threshold 往下拉到压制 -3～-5dB</li>
+      </ul>
+      <p><strong>Bass Fuzz（核心失真）</strong></p>
+      <ul>
+        <li>Noise Gate：Threshold 约 <code>-45dB</code>，挡掉失真带出来的底噪</li>
+        <li>Pedalboard：Distortion 分类里选 <code>Happy Fuzz</code> 或 <code>Grit Diode</code>；Drive/Fuzz 拧到 2点钟，Tone 拧到 11点钟收掉多余毛刺</li>
+        <li>Channel EQ：高通 <code>80Hz</code>，低通 <code>5kHz</code>，把失真轨的低频和超高频都切掉，留给 Clean 轨和 Synth 轨各自负责</li>
+      </ul>
+      <p><strong>Bass Synth（工业感垫层）</strong></p>
+      <ul>
+        <li>右键音频块 → 音频 → 转为 MIDI 信号，生成一条 MIDI 轨</li>
+        <li>乐器换成 <code>Retro Synth</code>：Oscillator 切到 Sawtooth（锯齿波），Voice 模式切 Mono</li>
+        <li>这条轨挂 Channel EQ，高通狠狠拉到 <code>120Hz</code>，只留中频的塑料摩擦感，不跟 Clean 轨抢低频</li>
+        <li>原本复制出来的音频版 Bass Synth 轨这时候没用了，删掉</li>
+      </ul>
+
+      <h3>第五阶段：Bass Master 总线合体</h3>
+      <ul>
+        <li>配比：Fuzz 和 Synth 先拉到底静音；Clean 轨固定在 <code>-6dB</code> 作为基准；慢慢推 Fuzz 轨到 <code>-10～-14dB</code> 直到有侵略性的撕裂感；Synth 轨只需要很小声，<code>-18～-24dB</code>，能听到一点工业科技感即可</li>
+        <li>胶水压缩：Compressor 切 <code>Vintage Opto</code> 面板；Ratio <code>4:1</code>，Attack 故意设慢一点 <code>15ms</code>（留住右手砸品丝的硬颗粒），Threshold 只压 2dB 左右</li>
+        <li>最后挂一个 Channel EQ，在 <code>3.2kHz</code> 附近宽频提升 2dB——这一下能让贝斯多出狂暴的咬字感</li>
+      </ul>
+
+      <h3>录音延迟小贴士</h3>
+      <p>跟弹时点亮轨道的 <strong>I（Input Monitoring）</strong> 按钮。如果耳机里有延迟，去 <code>Logic Pro → 设置 → 音频</code>，把 I/O 缓冲大小改成 <code>64 Samples</code> 录音；录完开始混音时再改回 <code>1024 Samples</code>。</p>
+    </div>
+  </div>
+
   <footer>提示：这些是通用起点，不是标准答案——具体数值还是要边调边用耳朵听，不同的琴、不同的录音环境、不同的歌都不一样。</footer>
 </div>
 
