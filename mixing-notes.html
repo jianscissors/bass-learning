@@ -144,28 +144,31 @@
       <p><strong>Bass Clean（地基）</strong></p>
       <ul>
         <li>Bass Amp Designer：Model 选 <code>Classic Amp</code>，Cabinet 选 <code>8x10</code>；Bass 拧到 2点钟，Lo Mid 1点钟，Treble 降到 9点钟</li>
-        <li>Compressor：切到 <code>Studio FET</code> 面板；Ratio <code>4:1</code>，Attack 拉到最快 <code>0.1ms</code>，Release <code>50ms</code>，Threshold 往下拉到压制 -3～-5dB</li>
+        <li>Compressor：切到 <code>Studio FET</code> 面板；Ratio <code>4:1</code>；Attack 别拉到最快，留在 <code>2-3ms</code>（0.1ms 会把手指刚碰弦那一瞬间最清脆的"砰"直接拍死，只剩闷闷的低音屁股，留 2-3ms 才有弹性和颗粒感）；Release 切 <code>Auto</code> 或手动调小到 <code>30ms</code>（太慢的话前一个音还没放开压缩，下一个16分音符就糊上去了）；Threshold 往下拉到压制 -3～-5dB</li>
+        <li>Channel EQ：低通（Low Pass）调到 <code>800Hz-1kHz</code>，挡掉高频电流杂音但保留击弦音头；再单独加一个 EQ 点在 <code>180Hz</code>，拉低 <code>-3～-4dB</code>——180Hz 是小房间/耳机里最容易"嗡嗡嗡"糊成一片的罪魁祸首，挖掉它声音立刻变清脆</li>
       </ul>
       <p><strong>Bass Fuzz（核心失真）</strong></p>
       <ul>
         <li>Noise Gate：Threshold 约 <code>-45dB</code>，挡掉失真带出来的底噪</li>
         <li>Pedalboard：Distortion 分类里选 <code>Happy Fuzz</code> 或 <code>Grit Diode</code>；Drive/Fuzz 拧到 2点钟，Tone 拧到 11点钟收掉多余毛刺</li>
-        <li>Channel EQ：高通 <code>80Hz</code>，低通 <code>5kHz</code>，把失真轨的低频和超高频都切掉，留给 Clean 轨和 Synth 轨各自负责</li>
+        <li>Channel EQ：高通（High Pass）激进地拉到 <code>150Hz</code>（不是 80Hz），低通保持 <code>5kHz</code>。失真轨不需要任何重低音，150Hz 以下全部抽干，让它变成纯粹的中频"电锯砂砾"，不去跟 Clean 轨的低频打架</li>
       </ul>
       <p><strong>Bass Synth（工业感垫层）</strong></p>
       <ul>
         <li>右键音频块 → 音频 → 转为 MIDI 信号，生成一条 MIDI 轨</li>
         <li>乐器换成 <code>Retro Synth</code>：Oscillator 切到 Sawtooth（锯齿波），Voice 模式切 Mono</li>
-        <li>这条轨挂 Channel EQ，高通狠狠拉到 <code>120Hz</code>，只留中频的塑料摩擦感，不跟 Clean 轨抢低频</li>
+        <li>这条轨挂 Channel EQ，高通拉到 <code>200Hz</code>（不是 120Hz）。单独听这条轨应该像老旧收音机一样单薄、刺耳，这才是对的——它不负责低频，只负责垫一层塑料摩擦感</li>
         <li>原本复制出来的音频版 Bass Synth 轨这时候没用了，删掉</li>
       </ul>
+      <p>三轨这样切完，频率上是严丝合缝拼图：Clean 轨管 <code>180Hz</code> 以下（挖掉嗡嗡堆积区）到 <code>800Hz-1kHz</code> 的音高地基；Fuzz 轨只占 <code>150Hz-5kHz</code> 的中频电锯段；Synth 轨只占 <code>200Hz</code> 以上的单薄尖锐层。三条轨完全一样的 16 分音符叠在一起时，中低频（100-250Hz）会指数级堆积成轰鸣、吞掉颗粒感——这套高通/低通分工就是专门防这个的。</p>
 
       <h3>第五阶段：Bass Master 总线合体</h3>
       <ul>
-        <li>配比：Fuzz 和 Synth 先拉到底静音；Clean 轨固定在 <code>-6dB</code> 作为基准；慢慢推 Fuzz 轨到 <code>-10～-14dB</code> 直到有侵略性的撕裂感；Synth 轨只需要很小声，<code>-18～-24dB</code>，能听到一点工业科技感即可</li>
+        <li>配比用"由无到有"盲听法，顺序很重要：三条轨先全部拉到底静音；<strong>先推 Bass Fuzz</strong>，直到清晰听到电锯般、线条感极强的失真段落；保持 Fuzz 播放，<strong>再慢慢推 Bass Clean</strong>，推到刚好感觉到低音重量撞胸口就立刻停手——千万别让 Clean 盖过 Fuzz，这正是"糊"最常见的原因；最后<strong>轻轻推起一丁点 Synth</strong>（通常最终落在 <code>-18～-24dB</code>），给声音套一层电子外壳即可，不用多</li>
         <li>胶水压缩：Compressor 切 <code>Vintage Opto</code> 面板；Ratio <code>4:1</code>，Attack 故意设慢一点 <code>15ms</code>（留住右手砸品丝的硬颗粒），Threshold 只压 2dB 左右</li>
         <li>最后挂一个 Channel EQ，在 <code>3.2kHz</code> 附近宽频提升 2dB——这一下能让贝斯多出狂暴的咬字感</li>
       </ul>
+      <p>按上面这套调完（Clean 挖掉 180Hz、Fuzz 高通拉到 150Hz、重新按 Fuzz→Clean→Synth 的顺序配比），弹的每个16分音符应该会变得像弹珠一样清晰、一粒一粒地蹦出来，不再糊成一片。</p>
 
       <h3>录音延迟小贴士</h3>
       <p>跟弹时点亮轨道的 <strong>I（Input Monitoring）</strong> 按钮。如果耳机里有延迟，去 <code>Logic Pro → 设置 → 音频</code>，把 I/O 缓冲大小改成 <code>64 Samples</code> 录音；录完开始混音时再改回 <code>1024 Samples</code>。</p>
