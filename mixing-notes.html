@@ -137,7 +137,7 @@
       <p>按下面《Hysteria》三轨配方实际操作一遍：</p>
       <ul>
         <li><strong>Bass Clean</strong>：只开低通（右上角），Frequency 输入 <code>800</code>（或 1000），回车——800Hz 右边的高频杂音、擦弦声整个被切掉</li>
-        <li><strong>Bass Fuzz</strong>：两头都开。高通（左上角）输入 <code>150</code>，低通（右上角）输入 <code>5000</code>，分别回车——低频不跟 Clean 轨打架，高频漏电丝丝声也切掉</li>
+        <li><strong>Bass Fuzz</strong>：两头都开。高通（左上角）输入 <code>120</code>，低通（右上角）输入 <code>5000</code>，分别回车——跟 Clean 轨的 800Hz 低通留一段重叠防止脱节，高频漏电丝丝声切掉</li>
         <li><strong>Bass Synth</strong>：只开高通（左上角），输入 <code>200</code>，回车——只留合成器的塑料高频，完全不要低音</li>
       </ul>
     </div>
@@ -200,7 +200,8 @@
       <ul>
         <li>Noise Gate：Threshold 约 <code>-45dB</code>，挡掉失真带出来的底噪</li>
         <li>Pedalboard：Distortion 分类里选 <code>Happy Fuzz</code> 或 <code>Grit Diode</code>；Drive/Fuzz 拧到 2点钟，Tone 拧到 11点钟收掉多余毛刺</li>
-        <li>Channel EQ：高通（High Pass）激进地拉到 <code>150Hz</code>（不是 80Hz），低通保持 <code>5kHz</code>。失真轨不需要任何重低音，150Hz 以下全部抽干，让它变成纯粹的中频"电锯砂砾"，不去跟 Clean 轨的低频打架</li>
+        <li>Channel EQ：高通（High Pass）拉到 <code>120Hz</code>（不是 150Hz）。这里故意跟 Clean 轨的 <code>800Hz</code> 低通留出 120-800Hz 一段重叠区——完全不重叠的话两条轨会听起来脱节、像两层皮；重叠区靠胶水压缩（见第五阶段）粘合，不会糊，低通保持 <code>5kHz</code></li>
+        <li>如果用的是独立的 <code>Distortion</code>/<code>Distortion II</code> 插件而不是 Pedalboard：把 Mix（干湿比）从 100% 往回调到 <code>85-90%</code>，混入一点点干净原声，让失真轨内部自己先有个过渡，叠到 Clean 轨上才不会显得生硬</li>
       </ul>
       <p><strong>Bass Synth（工业感垫层）</strong></p>
       <ul>
@@ -209,15 +210,23 @@
         <li>这条轨挂 Channel EQ，高通拉到 <code>200Hz</code>（不是 120Hz）。单独听这条轨应该像老旧收音机一样单薄、刺耳，这才是对的——它不负责低频，只负责垫一层塑料摩擦感</li>
         <li>原本复制出来的音频版 Bass Synth 轨这时候没用了，删掉</li>
       </ul>
-      <p>三轨这样切完，频率上是严丝合缝拼图：Clean 轨管 <code>180Hz</code> 以下（挖掉嗡嗡堆积区）到 <code>800Hz-1kHz</code> 的音高地基；Fuzz 轨只占 <code>150Hz-5kHz</code> 的中频电锯段；Synth 轨只占 <code>200Hz</code> 以上的单薄尖锐层。三条轨完全一样的 16 分音符叠在一起时，中低频（100-250Hz）会指数级堆积成轰鸣、吞掉颗粒感——这套高通/低通分工就是专门防这个的。</p>
+      <p>三轨频率大致是这样分工：Clean 轨管 <code>180Hz</code> 以下（挖掉嗡嗡堆积区）到 <code>800Hz-1kHz</code> 的音高地基；Fuzz 轨占 <code>120Hz-5kHz</code> 的中频电锯段，跟 Clean 轨在 120-800Hz 之间故意留了重叠；Synth 轨只占 <code>200Hz</code> 以上的单薄尖锐层。完全不重叠会脱节，重叠太多又会堆积出轰鸣糊成一片（尤其 100-250Hz 这段）——这套数值是在两者之间找平衡，重叠区域的粘合交给胶水压缩来处理。</p>
+
+      <h3>排查"脱节感"：相位打架（Phase Issue）</h3>
+      <p>如果 Clean（纯净低频）和 Fuzz（失真中高频）听起来像两条各顾各的声音、没有融合在一起，先怀疑相位：Fuzz 轨挂了一堆插件（Noise Gate、Pedalboard、EQ），插件运算会带来几毫秒延迟，导致 Fuzz 轨波形比 Clean 轨慢了一点点，两轨叠加时互相抵消，听感就是"低音是低音、高音是高音，中间断层"。</p>
+      <ul>
+        <li>在 Bass Fuzz 轨的 Audio FX 空格里加一个 <code>Utility → Gain</code> 插件</li>
+        <li>找到 Gain 插件里的 <strong>Phase Invert（相位反转，图标是 Ø）</strong>按钮，点亮它</li>
+        <li>闭眼听：如果点亮瞬间贝斯突然变得肥厚凝聚、低音和失真合二为一，说明之前确实反相了，保留点亮状态；如果反而更空洞怪异，就点掉它</li>
+      </ul>
 
       <h3>第五阶段：Bass Master 总线合体</h3>
       <ul>
         <li>配比用"由无到有"盲听法，顺序很重要：三条轨先全部拉到底静音；<strong>先推 Bass Fuzz</strong>，直到清晰听到电锯般、线条感极强的失真段落；保持 Fuzz 播放，<strong>再慢慢推 Bass Clean</strong>，推到刚好感觉到低音重量撞胸口就立刻停手——千万别让 Clean 盖过 Fuzz，这正是"糊"最常见的原因；最后<strong>轻轻推起一丁点 Synth</strong>（通常最终落在 <code>-18～-24dB</code>），给声音套一层电子外壳即可，不用多</li>
-        <li>胶水压缩：Compressor 切 <code>Vintage Opto</code> 面板；Ratio <code>4:1</code>，Attack 故意设慢一点 <code>15ms</code>（留住右手砸品丝的硬颗粒），Threshold 只压 2dB 左右</li>
+        <li>胶水压缩：Compressor 切 <code>Vintage Opto</code> 面板；Ratio <code>4:1</code>，Attack <code>10ms</code>（比单轨各自的压缩快一点，尽早同时抓住 Clean 和 Fuzz 的音头，但还没快到会拍死颗粒感的程度），Release 别选 Auto，手动设 <code>80ms</code>（放得慢，让压缩器在整段16分音符里一直"按着"两轨不放，强行粘合动态），Threshold 往下拉到压制 <code>-3～-4dB</code>（比单纯去糊时的 2dB 更狠一点，专门用来焊死 Clean 和 Fuzz 的脱节感）</li>
         <li>最后挂一个 Channel EQ，在 <code>3.2kHz</code> 附近宽频提升 2dB——这一下能让贝斯多出狂暴的咬字感</li>
       </ul>
-      <p>按上面这套调完（Clean 挖掉 180Hz、Fuzz 高通拉到 150Hz、重新按 Fuzz→Clean→Synth 的顺序配比），弹的每个16分音符应该会变得像弹珠一样清晰、一粒一粒地蹦出来，不再糊成一片。</p>
+      <p>按上面这套调完（Clean 挖掉 180Hz、Fuzz 高通留在 120Hz 跟 Clean 保持重叠、按 Fuzz→Clean→Synth 的顺序配比、胶水压缩焊死两轨），弹的每个16分音符应该会变得像弹珠一样清晰、一粒一粒地蹦出来，同时 Clean 和 Fuzz 又不会脱节，而是拧成一股《Hysteria》那种水泥墙质感。</p>
 
       <h3>录音延迟小贴士</h3>
       <p>跟弹时点亮轨道的 <strong>I（Input Monitoring）</strong> 按钮。如果耳机里有延迟，去 <code>Logic Pro → 设置 → 音频</code>，把 I/O 缓冲大小改成 <code>64 Samples</code> 录音；录完开始混音时再改回 <code>1024 Samples</code>。</p>
