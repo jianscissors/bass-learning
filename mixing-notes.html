@@ -123,6 +123,27 @@
   </div>
 
   <div class="panel">
+    <div class="settings-label">Channel EQ 里高通/低通具体怎么点</div>
+    <div class="note-content">
+      <p>高通（High Pass/HPF）和低通（Low Pass/LPF）不是普通的 EQ 小球那样只是挖个坑，而是把某一边的频率直接整个切掉，像切西瓜一样。名字容易搞反，记忆方法：<strong>高通 = 让高频通过 = 切掉低频（砍左边）</strong>；<strong>低通 = 让低频通过 = 切掉高频（砍右边）</strong>。</p>
+      <h3>打开开关</h3>
+      <ul>
+        <li>双击轨道的 Channel EQ 插槽，打开独立大窗口</li>
+        <li><strong>界面最左上角</strong>有个高通开关（图标像左边突然往下折的平线），点亮（变色）就是开启了高通，屏幕左侧曲线会塌陷下去</li>
+        <li><strong>界面最右上角</strong>有个低通开关（图标像右边突然往下折的平线），点亮后屏幕右侧曲线会塌陷下去</li>
+      </ul>
+      <h3>精准输入频率数字</h3>
+      <p>开关点亮后，最快最准的方法是双击开关正下方的 <strong>Frequency (Hz)</strong> 数字框，直接键盘输入数字再回车，比用鼠标拖准得多。也可以直接用鼠标拖拽屏幕上那个高亮的小圆圈（标 1 或 8），横向拖动时屏幕最下方的 Hz 数字会跟着实时变化，拖到想要的位置松手即可。</p>
+      <p>按下面《Hysteria》三轨配方实际操作一遍：</p>
+      <ul>
+        <li><strong>Bass Clean</strong>：只开低通（右上角），Frequency 输入 <code>800</code>（或 1000），回车——800Hz 右边的高频杂音、擦弦声整个被切掉</li>
+        <li><strong>Bass Fuzz</strong>：两头都开。高通（左上角）输入 <code>150</code>，低通（右上角）输入 <code>5000</code>，分别回车——低频不跟 Clean 轨打架，高频漏电丝丝声也切掉</li>
+        <li><strong>Bass Synth</strong>：只开高通（左上角），输入 <code>200</code>，回车——只留合成器的塑料高频，完全不要低音</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="panel">
     <div class="settings-label">《Hysteria》贝斯音色全流程（Muse）</div>
     <div class="note-content">
       <p>Chris Wolstenholme 那种打铁般的 16 分音符失真贝斯。核心思路：实物贝斯直接加失真会把低频搅浑，所以要把同一段录音复制成三条轨——干净低频地基、失真颗粒、合成器层——分开处理再混合。</p>
