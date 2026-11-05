@@ -104,6 +104,25 @@
   </div>
 
   <div class="panel">
+    <div class="settings-label">Logic Pro 通道条：Setting 和 Audio FX 是什么关系</div>
+    <div class="note-content">
+      <p>调音台（<code>X</code>）里每条轨道最上面是 <strong>Setting（通道条设置）</strong>，下面是一串 <strong>Audio FX（音频效果器插槽）</strong>——这两者是"包含与被包含"的关系，而且会互相覆盖，搞混了很容易把辛苦调好的参数全部冲掉。</p>
+      <h3>Setting：整条轨道的"全家桶大礼包"</h3>
+      <ul>
+        <li>点击 Setting 选一个预设（比如某个 Bass 预设），会<strong>瞬间抹去</strong>你之前在 Audio FX 里手动挂的所有插件，换成预设自带的那一整套</li>
+        <li>反过来也能把自己调好的参数存起来复用：把一条轨道的插件和参数全部调满意后，点 Setting → <strong>存储通道条设置（Save Channel Strip Setting...）</strong>，取个名字；以后新建轨道只要在 Setting 里点它，整套插件和参数瞬间复活，不用重新一个个调</li>
+      </ul>
+      <h3>Audio FX：大礼包里的"单件积木"</h3>
+      <ul>
+        <li>在 Audio FX 插槽里新增、删除、调整某一个插件的参数，都只是对这条轨道做局部微调</li>
+        <li>只要不去点最上面的 Setting 切换预设，Audio FX 里已经挂好的插件就不会被动过</li>
+      </ul>
+      <h3>避坑：做并联混音（比如 Hysteria 那套三轨）时尤其要小心</h3>
+      <p>一旦开始像下面《Hysteria》流程那样手动给每条轨道精细调 EQ、压缩这种并联混音，就<strong>不要再去碰最上面的 Setting 按钮</strong>了——不小心点一下切换预设，之前在 Audio FX 里调好的那些参数（比如专门挖掉 180Hz 糊音的 EQ、调好的 Studio FET 压缩器）会瞬间全部消失，等于前功尽弃。想微调声音时，直接双击下面 Audio FX 里具体的那个插件方块进去调，不要碰 Setting。</p>
+    </div>
+  </div>
+
+  <div class="panel">
     <div class="settings-label">《Hysteria》贝斯音色全流程（Muse）</div>
     <div class="note-content">
       <p>Chris Wolstenholme 那种打铁般的 16 分音符失真贝斯。核心思路：实物贝斯直接加失真会把低频搅浑，所以要把同一段录音复制成三条轨——干净低频地基、失真颗粒、合成器层——分开处理再混合。</p>
